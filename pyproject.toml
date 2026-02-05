@@ -1,0 +1,113 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scholium"
+version = "0.1.0"
+description = "Generate educational videos from slides and transcripts with AI voice synthesis"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["tts", "education", "video", "slides", "lecture"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Core dependencies - always required
+    "pyyaml>=6.0",
+    "click>=8.0",
+    "pdf2image>=1.16.0",
+    "Pillow>=10.0.0",
+    "ffmpeg-python>=0.2.0",
+    "pydub>=0.25.0",
+    "tqdm>=4.65.0",
+    "torch>=2.10.0",
+    "torchaudio>=2.5.0",
+]
+
+[project.optional-dependencies]
+# Piper TTS - Fast, modern, local TTS (RECOMMENDED)
+# Actively maintained, good quality, no dependency issues
+piper = [
+    "piper-tts>=1.2.0",
+    "pathvalidate>=3.0.0",
+]
+
+# ElevenLabs - Cloud API (requires API key, paid after free tier)
+elevenlabs = [
+    "elevenlabs>=0.2.0,<3.0.0",
+]
+
+# Coqui TTS - Local TTS with voice cloning
+# Note: Has known dependency conflicts with newer torch/transformers
+# Works best with Python 3.11 and pinned versions below
+coqui = [
+    "TTS>=0.22.0",
+    "transformers",
+]
+
+# OpenAI TTS - Cloud API (requires API key, paid)
+# High quality, latest models
+openai = [
+    "openai>=1.0.0",
+]
+
+# Bark - High quality local TTS
+# Slower but excellent voice quality
+bark = [
+    "bark>=0.1.0",
+    "transformers>=4.30.0",
+]
+
+# All TTS providers
+all = [
+    "TTS>=0.22.0",
+    "transformers",
+    "elevenlabs>=1.0,<3.0.0",
+    "piper-tts>=1.2.0",
+    "openai>=1.0.0",
+    "bark>=0.1.0",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+scholium = "src.main:cli"
+scholium-train = "src.train_voice:cli"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/scholium"
+Issues = "https://github.com/yourusername/scholium/issues"
+
+[tool.setuptools]
+packages = ["src", "tts_providers"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

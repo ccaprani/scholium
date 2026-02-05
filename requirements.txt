@@ -1,0 +1,31 @@
+# Scholium Core Dependencies
+# Install with: pip install -r requirements.txt
+#
+# For TTS providers, use:
+#   pip install scholium[piper]       # Recommended
+#   pip install scholium[elevenlabs]  # Cloud API
+#   pip install scholium[coqui]       # Voice cloning (has dependency issues)
+#   pip install scholium[openai]      # OpenAI TTS
+#   pip install scholium[bark]        # High quality local
+#   pip install scholium[all]         # All providers
+
+# Core dependencies
+pyyaml>=6.0
+click>=8.0
+
+# Slide processing
+pdf2image>=1.16.0
+Pillow>=10.0.0
+
+# Video generation
+ffmpeg-python>=0.2.0
+
+# Audio processing
+pydub>=0.25.0
+
+# Utilities
+tqdm>=4.65.0
+
+# Testing (for development)
+pytest>=7.0.0
+pytest-cov>=4.0.0

@@ -1,0 +1,81 @@
+# Scholium Configuration
+# Automated instructional video generation from markdown
+
+# Slide settings
+slide_marker: "[NEXT]"  # Marker for slide transitions in transcript
+pandoc_template: "beamer"  # Pandoc template for slide generation
+
+# TTS settings
+# Available providers: piper, elevenlabs, coqui, openai, bark
+# Install with: pip install scholium[provider_name]
+tts_provider: "piper"  # Default: piper (fast, free, local)
+voice: "en_US-lessac-medium"  # Voice name (provider-specific)
+
+# Piper TTS settings (recommended for getting started - FREE!)
+# Install with: pip install scholium[piper]
+# Voices download automatically from HuggingFace on first use
+piper:
+  # Available voices:
+  # - en_US-lessac-medium (male, clear)
+  # - en_US-amy-medium (female, clear)
+  # - en_US-ryan-medium (male)
+  # - en_GB-alan-medium (British male)
+  # - en_GB-alba-medium (British female)
+  # More voices: https://huggingface.co/rhasspy/piper-voices
+
+# Coqui TTS settings (recommended - FREE local voice cloning!)
+# Install with: pip install scholium[coqui]
+# Note: Requires Python 3.11 and has specific dependency versions
+coqui:
+  model: "tts_models/multilingual/multi-dataset/xtts_v2"  # XTTS v2 for voice cloning
+  # Train voice with: scholium train-voice --name my_voice --provider coqui --sample audio.wav
+  # Then use: scholium generate ... --provider coqui --voice my_voice
+
+# ElevenLabs API settings (for highest quality)
+# Install with: pip install scholium[elevenlabs]
+# Requires API key from elevenlabs.io
+# 
+# ⚠️  SECURITY WARNING: Do NOT store your API key in this file!
+# Use environment variable instead: export ELEVENLABS_API_KEY="your_key"
+elevenlabs:
+  api_key: ""  # Leave empty - use ELEVENLABS_API_KEY environment variable
+  model: "eleven_monolingual_v1"
+  # Get voice_id from elevenlabs.io after cloning your voice
+
+# OpenAI TTS settings
+# Install with: pip install scholium[openai]
+# Requires API key from platform.openai.com
+# 
+# ⚠️  SECURITY WARNING: Do NOT store your API key in this file!
+# Use environment variable instead: export OPENAI_API_KEY="your_key"
+openai:
+  api_key: ""  # Leave empty - use OPENAI_API_KEY environment variable
+  model: "tts-1"  # Options: tts-1, tts-1-hd
+  # Available voices: alloy, echo, fable, onyx, nova, shimmer
+
+# Bark TTS settings (high quality, slow)
+# Install with: pip install scholium[bark]
+bark:
+  model: "small"  # Options: small, medium, large
+
+# Video settings
+resolution: [1920, 1080]  # Output resolution (width, height)
+fps: 30  # Frames per second
+
+# Paths
+# Voice storage directory (stores Piper models and Coqui trained voices)
+# Default: ~/.local/share/scholium/voices (system-wide, shared across projects)
+# Override: "./voices" (project-specific, portable with project)
+voices_dir: "~/.local/share/scholium/voices"
+temp_dir: "./temp"  # Temporary files during generation
+output_dir: "./output"  # Final video output
+
+# Processing options
+keep_temp_files: false  # Keep temporary files for debugging
+verbose: true  # Show detailed progress
+
+# Timing defaults (can be overridden per-slide in transcript)
+timing:
+  default_pre_delay: 0.0   # Default pause before speaking (seconds)
+  default_post_delay: 0.0  # Default pause after speaking (seconds)
+  min_slide_duration: 3.0  # Minimum duration for any slide (seconds)

@@ -1,0 +1,202 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BarkProvider	src/__init__.py	/^    BarkProvider = None$/;"	v
+BarkProvider	tts_providers/__init__.py	/^    BarkProvider = None$/;"	v
+BarkProvider	tts_providers/bark.py	/^class BarkProvider(BaseTTSProvider):$/;"	c
+BaseTTSProvider	tts_providers/base.py	/^class BaseTTSProvider(ABC):$/;"	c
+COQUI_AVAILABLE	tts_providers/coqui.py	/^COQUI_AVAILABLE = CoquiTTS is not None$/;"	v
+COQUI_AVAILABLE	tts_providers/coqui.py	/^COQUI_AVAILABLE = False$/;"	v
+Config	src/config.py	/^class Config:$/;"	c
+CoquiProvider	src/__init__.py	/^    CoquiProvider = None$/;"	v
+CoquiProvider	tts_providers/__init__.py	/^    CoquiProvider = None$/;"	v
+CoquiProvider	tts_providers/coqui.py	/^class CoquiProvider(TTSProvider):$/;"	c
+CoquiTTS	tts_providers/coqui.py	/^    CoquiTTS = None$/;"	v
+CoquiTTS	tts_providers/coqui.py	/^CoquiTTS = None$/;"	v
+CourseBuilder	examples/batch_driver.py	/^class CourseBuilder:$/;"	c
+DEFAULT_CONFIG	src/config.py	/^    DEFAULT_CONFIG = {$/;"	v	class:Config
+ElevenLabsProvider	src/__init__.py	/^    ElevenLabsProvider = None$/;"	v
+ElevenLabsProvider	tts_providers/__init__.py	/^    ElevenLabsProvider = None$/;"	v
+ElevenLabsProvider	tts_providers/el.py	/^class ElevenLabsProvider(TTSProvider):$/;"	c
+ElevenLabsProvider	tts_providers/elevenlabs.py	/^class ElevenLabsProvider(TTSProvider):$/;"	c
+OpenAIProvider	src/__init__.py	/^    OpenAIProvider = None$/;"	v
+OpenAIProvider	tts_providers/__init__.py	/^    OpenAIProvider = None$/;"	v
+OpenAIProvider	tts_providers/openai.py	/^class OpenAIProvider(BaseTTSProvider):$/;"	c
+PiperProvider	src/__init__.py	/^    PiperProvider = None$/;"	v
+PiperProvider	tts_providers/__init__.py	/^    PiperProvider = None$/;"	v
+PiperProvider	tts_providers/piper.py	/^class PiperProvider:$/;"	c
+Slide	src/unified_parser.py	/^class Slide:$/;"	c
+SlideProcessor	src/slide_processor.py	/^class SlideProcessor:$/;"	c
+SlideSegment	src/unified_parser.py	/^class SlideSegment:$/;"	c
+TTSEngine	src/tts_engine.py	/^class TTSEngine:$/;"	c
+TTSProvider	tts_providers/base.py	/^class TTSProvider(ABC):$/;"	c
+TestConfig	tests/test_core.py	/^class TestConfig:$/;"	c
+TestEndToEndPipeline	tests/test_integration.py	/^class TestEndToEndPipeline:$/;"	c
+TestIntegration	tests/test_core.py	/^class TestIntegration:$/;"	c
+TestSlideProcessing	tests/test_integration.py	/^class TestSlideProcessing:$/;"	c
+TestUnifiedParser	tests/test_core.py	/^class TestUnifiedParser:$/;"	c
+TestUnifiedParserIntegration	tests/test_integration.py	/^class TestUnifiedParserIntegration:$/;"	c
+TestVideoGeneration	tests/test_integration.py	/^class TestVideoGeneration:$/;"	c
+TestVoiceManager	tests/test_core.py	/^class TestVoiceManager:$/;"	c
+TranscriptParser	src/transcript_parser.py	/^class TranscriptParser:$/;"	c
+UnifiedParser	src/unified_parser.py	/^class UnifiedParser:$/;"	c
+VideoGenerator	src/video_generator.py	/^class VideoGenerator:$/;"	c
+VoiceManager	src/voice_manager.py	/^class VoiceManager:$/;"	c
+__all__	src/__init__.py	/^__all__ = [$/;"	v
+__all__	tts_providers/__init__.py	/^__all__ = [$/;"	v
+__init__	examples/batch_driver.py	/^    def __init__(self, base_dir, voice="my_voice"):$/;"	m	class:CourseBuilder
+__init__	src/config.py	/^    def __init__(self, config_path: Optional[str] = None):$/;"	m	class:Config
+__init__	src/slide_processor.py	/^    def __init__(self, pandoc_template: str = 'beamer', resolution: tuple = (1920, 1080)):$/;"	m	class:SlideProcessor
+__init__	src/transcript_parser.py	/^    def __init__(self, slide_marker: str = "[NEXT]"):$/;"	m	class:TranscriptParser
+__init__	src/tts_engine.py	/^    def __init__($/;"	m	class:TTSEngine
+__init__	src/video_generator.py	/^    def __init__(self, resolution: tuple = (1920, 1080), fps: int = 30):$/;"	m	class:VideoGenerator
+__init__	src/voice_manager.py	/^    def __init__(self, voices_dir: str = '.\/voices'):$/;"	m	class:VoiceManager
+__init__	tts_providers/bark.py	/^    def __init__(self, voice_preset: str = 'v2\/en_speaker_6'):$/;"	m	class:BarkProvider
+__init__	tts_providers/base.py	/^    def __init__(self):$/;"	m	class:BaseTTSProvider
+__init__	tts_providers/base.py	/^    def __init__(self):$/;"	m	class:TTSProvider
+__init__	tts_providers/coqui.py	/^    def __init__($/;"	m	class:CoquiProvider
+__init__	tts_providers/el.py	/^    def __init__($/;"	m	class:ElevenLabsProvider
+__init__	tts_providers/elevenlabs.py	/^    def __init__(self, api_key: str = None, model: str = "eleven_monolingual_v2"):$/;"	m	class:ElevenLabsProvider
+__init__	tts_providers/openai.py	/^    def __init__(self, api_key: Optional[str] = None, model: str = 'tts-1', voice: str = 'alloy'):$/;"	m	class:OpenAIProvider
+__init__	tts_providers/piper.py	/^    def __init__(self, **kwargs):$/;"	m	class:PiperProvider
+_concatenate_clips	src/video_generator.py	/^    def _concatenate_clips(self, clip_paths: List[str], output_path: str, temp_dir: str):$/;"	m	class:VideoGenerator
+_create_clip	src/video_generator.py	/^    def _create_clip($/;"	m	class:VideoGenerator
+_create_clip_with_timing	src/video_generator.py	/^    def _create_clip_with_timing($/;"	m	class:VideoGenerator
+_create_provider	src/tts_engine.py	/^    def _create_provider(self):$/;"	m	class:TTSEngine
+_extract_notes_block	src/unified_parser.py	/^    def _extract_notes_block(self, slide_text: str) -> Tuple[str, str]:$/;"	m	class:UnifiedParser
+_extract_timing_directives	src/unified_parser.py	/^    def _extract_timing_directives(self, text: str, metadata: Dict) -> str:$/;"	m	class:UnifiedParser
+_get_device	tts_providers/coqui.py	/^    def _get_device(self) -> str:$/;"	m	class:CoquiProvider
+_load_env_vars	src/config.py	/^    def _load_env_vars(self):$/;"	m	class:Config
+_load_model	tts_providers/coqui.py	/^    def _load_model(self):$/;"	m	class:CoquiProvider
+_merge_config	src/config.py	/^    def _merge_config(self, user_config: Dict[str, Any]):$/;"	m	class:Config
+_parse_body_slides	src/unified_parser.py	/^    def _parse_body_slides(self, body: str, start_index: int = 0) -> List[Slide]:$/;"	m	class:UnifiedParser
+_parse_metadata_from_comment	src/unified_parser.py	/^    def _parse_metadata_from_comment(self, comment: str, metadata: Dict):$/;"	m	class:UnifiedParser
+_parse_metadata_line	src/unified_parser.py	/^    def _parse_metadata_line(self, line: str, metadata: Dict):$/;"	m	class:UnifiedParser
+_parse_notes_block	src/unified_parser.py	/^    def _parse_notes_block(self, notes: str, slide_content: str) -> Tuple[List[str], Dict]:$/;"	m	class:UnifiedParser
+_parse_notes_text	src/unified_parser.py	/^    def _parse_notes_text(self, notes: str) -> Tuple[str, Dict]:$/;"	m	class:UnifiedParser
+_resolve_voice_id	tts_providers/el.py	/^    def _resolve_voice_id(self, voice: str) -> str:$/;"	m	class:ElevenLabsProvider
+_split_frontmatter	src/unified_parser.py	/^    def _split_frontmatter(self, content: str) -> Tuple[Dict, str]:$/;"	m	class:UnifiedParser
+_split_narration_segments	src/unified_parser.py	/^    def _split_narration_segments(self, text: str, slide_content: str) -> List[str]:$/;"	m	class:UnifiedParser
+build_all	examples/batch_driver.py	/^    def build_all(self, course_structure):$/;"	m	class:CourseBuilder
+build_lecture	examples/batch_driver.py	/^    def build_lecture(self, lecture_dir, output_dir=None):$/;"	m	class:CourseBuilder
+build_subject	examples/batch_driver.py	/^    def build_subject(self, subject_name, lecture_numbers, shared_lectures=None):$/;"	m	class:CourseBuilder
+can_run_integration	conftest.py	/^def can_run_integration(has_pandoc, has_ffmpeg):$/;"	f
+cli	src/main.py	/^def cli():$/;"	f
+cli	src/train_voice.py	/^def cli():$/;"	f
+clone_voice	tts_providers/bark.py	/^    def clone_voice(self, sample_audio_path: str, voice_name: str) -> str:$/;"	m	class:BarkProvider
+clone_voice	tts_providers/base.py	/^    def clone_voice(self, sample_audio_path: str, voice_name: str) -> str:$/;"	m	class:BaseTTSProvider
+create_video	src/video_generator.py	/^    def create_video($/;"	m	class:VideoGenerator
+create_voice	src/voice_manager.py	/^    def create_voice($/;"	m	class:VoiceManager
+ensure_dirs	src/config.py	/^    def ensure_dirs(self):$/;"	m	class:Config
+generate	src/main.py	/^def generate($/;"	f
+generate_audio	src/tts_engine.py	/^    def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:$/;"	m	class:TTSEngine
+generate_audio	tts_providers/base.py	/^    def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:$/;"	m	class:TTSProvider
+generate_audio	tts_providers/coqui.py	/^    def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:$/;"	m	class:CoquiProvider
+generate_audio	tts_providers/el.py	/^    def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:$/;"	m	class:ElevenLabsProvider
+generate_audio	tts_providers/elevenlabs.py	/^    def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:$/;"	m	class:ElevenLabsProvider
+generate_audio	tts_providers/piper.py	/^    def generate_audio($/;"	m	class:PiperProvider
+generate_segments	src/tts_engine.py	/^    def generate_segments($/;"	m	class:TTSEngine
+get	src/config.py	/^    def get(self, key: str, default: Any = None) -> Any:$/;"	m	class:Config
+get_audio_duration	tts_providers/base.py	/^    def get_audio_duration(self, audio_path: str) -> float:$/;"	m	class:TTSProvider
+get_audio_duration	tts_providers/coqui.py	/^    def get_audio_duration(self, audio_path: str) -> float:$/;"	m	class:CoquiProvider
+get_audio_duration	tts_providers/el.py	/^    def get_audio_duration(self, audio_path: str) -> float:$/;"	m	class:ElevenLabsProvider
+get_audio_duration	tts_providers/elevenlabs.py	/^    def get_audio_duration(self, audio_path: str) -> float:$/;"	m	class:ElevenLabsProvider
+get_audio_duration	tts_providers/piper.py	/^    def get_audio_duration(self, audio_path: str) -> float:$/;"	m	class:PiperProvider
+get_available_providers	tts_providers/__init__.py	/^def get_available_providers():$/;"	f
+get_fields	tts_providers/el.py	/^        def get_fields(v):$/;"	f	function:ElevenLabsProvider._resolve_voice_id
+get_info	tts_providers/bark.py	/^    def get_info(self) -> dict:$/;"	m	class:BarkProvider
+get_info	tts_providers/base.py	/^    def get_info(self) -> dict:$/;"	m	class:BaseTTSProvider
+get_info	tts_providers/openai.py	/^    def get_info(self) -> dict:$/;"	m	class:OpenAIProvider
+get_info	tts_providers/piper.py	/^    def get_info(self) -> Dict[str, Any]:$/;"	m	class:PiperProvider
+get_installed_providers	tts_providers/__init__.py	/^def get_installed_providers():$/;"	f
+get_provider_class	tts_providers/__init__.py	/^def get_provider_class(provider_name: str):$/;"	f
+get_stats	src/transcript_parser.py	/^    def get_stats(self, transcript_path: str) -> Dict[str, any]:$/;"	m	class:TranscriptParser
+get_voice_metadata	src/voice_manager.py	/^    def get_voice_metadata(self, voice_name: str) -> Dict[str, any]:$/;"	m	class:VoiceManager
+has_audio	src/unified_parser.py	/^    def has_audio(self) -> bool:$/;"	m	class:SlideSegment
+has_ffmpeg	conftest.py	/^def has_ffmpeg():$/;"	f
+has_ffmpeg	tests/test_integration.py	/^def has_ffmpeg():$/;"	f
+has_narration	src/unified_parser.py	/^    def has_narration(self) -> bool:$/;"	m	class:Slide
+has_pandoc	conftest.py	/^def has_pandoc():$/;"	f
+has_pandoc	tests/test_integration.py	/^def has_pandoc():$/;"	f
+info	src/train_voice.py	/^def info(name, config):$/;"	f
+is_incremental	src/unified_parser.py	/^    def is_incremental(self) -> bool:$/;"	m	class:Slide
+is_provider_available	tts_providers/__init__.py	/^def is_provider_available(provider_name: str) -> bool:$/;"	f
+is_silent	src/unified_parser.py	/^    def is_silent(self) -> bool:$/;"	m	class:SlideSegment
+is_title_slide	src/unified_parser.py	/^    def is_title_slide(self) -> bool:$/;"	m	class:Slide
+list	src/train_voice.py	/^def list(config):$/;"	f
+list_providers	src/main.py	/^def list_providers():$/;"	f
+list_voices	src/main.py	/^def list_voices(config):$/;"	f
+list_voices	src/voice_manager.py	/^    def list_voices(self) -> List[str]:$/;"	m	class:VoiceManager
+list_voices	tts_providers/bark.py	/^    def list_voices(self) -> list:$/;"	m	class:BarkProvider
+list_voices	tts_providers/base.py	/^    def list_voices(self) -> list:$/;"	m	class:BaseTTSProvider
+list_voices	tts_providers/openai.py	/^    def list_voices(self) -> list:$/;"	m	class:OpenAIProvider
+list_voices	tts_providers/piper.py	/^    def list_voices(self) -> list:$/;"	m	class:PiperProvider
+load_voice	src/voice_manager.py	/^    def load_voice(self, voice_name: str, provider: str) -> Dict[str, any]:$/;"	m	class:VoiceManager
+main	examples/batch_driver.py	/^def main():$/;"	f
+markdown_to_pdf	src/slide_processor.py	/^    def markdown_to_pdf(self, markdown_path: str, output_path: str) -> str:$/;"	m	class:SlideProcessor
+parse	src/transcript_parser.py	/^    def parse(self, transcript_path: str) -> List[Dict[str, any]]:$/;"	m	class:TranscriptParser
+parse	src/unified_parser.py	/^    def parse(self, markdown_path: str) -> List[Slide]:$/;"	m	class:UnifiedParser
+parse_marker_params	src/transcript_parser.py	/^def parse_marker_params(marker: str) -> Dict[str, float]:$/;"	f
+parse_time_spec	src/transcript_parser.py	/^def parse_time_spec(time_str: str) -> float:$/;"	f
+parse_time_spec	src/unified_parser.py	/^def parse_time_spec(time_str: str) -> float:$/;"	f
+parse_transcript	src/transcript_parser.py	/^def parse_transcript(transcript: str, marker: str = "[NEXT]") -> List[SlideSegment]:$/;"	f
+pdf_to_images	src/slide_processor.py	/^    def pdf_to_images(self, pdf_path: str, output_dir: str, dpi: int = 300) -> List[str]:$/;"	m	class:SlideProcessor
+process	src/slide_processor.py	/^    def process(self, markdown_path: str, output_dir: str) -> List[str]:$/;"	m	class:SlideProcessor
+project_root	conftest.py	/^def project_root():$/;"	f
+provider_info	src/main.py	/^def provider_info(provider_name):$/;"	f
+providers	src/main.py	/^def providers():$/;"	f
+pytest_collection_modifyitems	conftest.py	/^def pytest_collection_modifyitems(config, items):$/;"	f
+pytest_configure	conftest.py	/^def pytest_configure(config):$/;"	f
+regenerate_embeddings	src/main.py	/^def regenerate_embeddings(voice, config):$/;"	f
+segments	src/transcript_parser.py	/^    segments = parse_transcript(test_transcript)$/;"	v	class:TranscriptParser
+segments	src/transcript_parser.py	/^    segments = parse_transcript(timing_transcript)$/;"	v
+set	src/config.py	/^    def set(self, key: str, value: Any):$/;"	m	class:Config
+setup	src/train_voice.py	/^def setup(name, provider, voice_id, description, config):$/;"	f
+synthesize	tts_providers/bark.py	/^    def synthesize(self, text: str, output_path: str, voice_id: Optional[str] = None) -> str:$/;"	m	class:BarkProvider
+synthesize	tts_providers/base.py	/^    def synthesize(self, text: str, output_path: str, voice_id: Optional[str] = None) -> str:$/;"	m	class:BaseTTSProvider
+synthesize	tts_providers/openai.py	/^    def synthesize(self, text: str, output_path: str, voice_id: Optional[str] = None) -> str:$/;"	m	class:OpenAIProvider
+temp_dir	tests/test_core.py	/^    def temp_dir(self):$/;"	m	class:TestVoiceManager
+temp_output_dir	tests/test_integration.py	/^    def temp_output_dir(self, tmp_path):$/;"	m	class:TestSlideProcessing
+test_complete_pipeline_structure	tests/test_integration.py	/^    def test_complete_pipeline_structure(self, test_slides, tmp_path, has_pandoc):$/;"	m	class:TestEndToEndPipeline
+test_complete_slide_processing	tests/test_integration.py	/^    def test_complete_slide_processing(self, test_slides, temp_output_dir, has_pandoc):$/;"	m	class:TestSlideProcessing
+test_config_get_nested	tests/test_core.py	/^    def test_config_get_nested(self):$/;"	m	class:TestConfig
+test_config_set	tests/test_core.py	/^    def test_config_set(self):$/;"	m	class:TestConfig
+test_create_elevenlabs_voice	tests/test_core.py	/^    def test_create_elevenlabs_voice(self, voice_manager):$/;"	m	class:TestVoiceManager
+test_data_dir	conftest.py	/^def test_data_dir(project_root):$/;"	f
+test_data_dir	tests/test_integration.py	/^def test_data_dir():$/;"	f
+test_default_config	tests/test_core.py	/^    def test_default_config(self):$/;"	m	class:TestConfig
+test_dir	tests/test_core.py	/^    def test_dir(self):$/;"	m	class:TestIntegration
+test_dir	tests/test_core.py	/^    def test_dir(self):$/;"	m	class:TestUnifiedParser
+test_get_voice_metadata	tests/test_core.py	/^    def test_get_voice_metadata(self, voice_manager):$/;"	m	class:TestVoiceManager
+test_list_voices	tests/test_core.py	/^    def test_list_voices(self, voice_manager):$/;"	m	class:TestVoiceManager
+test_load_voice	tests/test_core.py	/^    def test_load_voice(self, voice_manager):$/;"	m	class:TestVoiceManager
+test_markdown_to_pdf	tests/test_integration.py	/^    def test_markdown_to_pdf(self, test_slides, temp_output_dir, has_pandoc):$/;"	m	class:TestSlideProcessing
+test_narration_not_split	tests/test_core.py	/^    def test_narration_not_split(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_parse_and_validate	tests/test_integration.py	/^    def test_parse_and_validate(self, test_slides, tmp_path, has_pandoc):$/;"	m	class:TestUnifiedParserIntegration
+test_parse_metadata	tests/test_core.py	/^    def test_parse_metadata(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_parse_slides_with_notes	tests/test_core.py	/^    def test_parse_slides_with_notes(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_parse_timing_directives	tests/test_core.py	/^    def test_parse_timing_directives(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_parser_output_structure	tests/test_core.py	/^    def test_parser_output_structure(self, test_dir):$/;"	m	class:TestIntegration
+test_pause_directives_preserved	tests/test_core.py	/^    def test_pause_directives_preserved(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_pdf_to_images	tests/test_integration.py	/^    def test_pdf_to_images(self, test_slides, temp_output_dir, has_pandoc):$/;"	m	class:TestSlideProcessing
+test_provider_mismatch	tests/test_core.py	/^    def test_provider_mismatch(self, voice_manager):$/;"	m	class:TestVoiceManager
+test_segment_creation	tests/test_core.py	/^    def test_segment_creation(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_slides	tests/test_integration.py	/^    def test_slides(self, test_data_dir):$/;"	m	class:TestEndToEndPipeline
+test_slides	tests/test_integration.py	/^    def test_slides(self, test_data_dir):$/;"	m	class:TestSlideProcessing
+test_slides	tests/test_integration.py	/^    def test_slides(self, test_data_dir):$/;"	m	class:TestUnifiedParserIntegration
+test_slides_path	tests/test_core.py	/^    def test_slides_path(self, test_dir):$/;"	m	class:TestUnifiedParser
+test_slides_produce_correct_segments	tests/test_integration.py	/^    def test_slides_produce_correct_segments(self, test_slides):$/;"	m	class:TestUnifiedParserIntegration
+test_validate_page_mismatch	tests/test_core.py	/^    def test_validate_page_mismatch(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_validate_slides	tests/test_core.py	/^    def test_validate_slides(self, test_slides_path):$/;"	m	class:TestUnifiedParser
+test_video_generator_initialization	tests/test_integration.py	/^    def test_video_generator_initialization(self, has_ffmpeg):$/;"	m	class:TestVideoGeneration
+torch	tts_providers/coqui.py	/^torch = None$/;"	v
+train	src/train_voice.py	/^def train(name, provider, sample, description, language, config):$/;"	f
+train_voice	src/main.py	/^def train_voice(name, provider, sample, description, language, config):$/;"	f
+validate	src/transcript_parser.py	/^    def validate(self, transcript_path: str, num_slides: int) -> Dict[str, any]:$/;"	m	class:TranscriptParser
+validate_segments	src/transcript_parser.py	/^def validate_segments(segments: List[SlideSegment], num_slides: int) -> List[str]:$/;"	f
+validate_slides	src/unified_parser.py	/^def validate_slides(slides: List[Slide], num_pdf_pages: int) -> List[str]:$/;"	f
+voice_exists	src/voice_manager.py	/^    def voice_exists(self, voice_name: str) -> bool:$/;"	m	class:VoiceManager
+voice_manager	tests/test_core.py	/^    def voice_manager(self, temp_dir):$/;"	m	class:TestVoiceManager
