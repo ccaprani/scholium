@@ -3,6 +3,15 @@ config.local.yaml
 *.key
 *.secret
 
+# Audio/video files
+*.mp4
+*.mp3
+*.wav
+*.m4a
+output/
+
+tags
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -59,6 +68,9 @@ cover/
 # Translations
 *.mo
 *.pot
+
+# Sphinx documentation
+docs/_build/
 
 # Django stuff:
 *.log

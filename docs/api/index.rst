@@ -1,3 +1,6 @@
+API Reference
+=============
+
 .. autosummary::
    :toctree: gen
    :template: custom-module-template.rst
