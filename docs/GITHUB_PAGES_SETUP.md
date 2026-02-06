@@ -40,7 +40,7 @@ git push origin main
 Your docs will be available at:
 
 ```
-https://yourusername.github.io/scholium/
+https://ccaprani.github.io/scholium/
 ```
 
 ## Manual Build (Local Testing)
@@ -82,10 +82,10 @@ Edit `docs/conf.py`:
 
 ```python
 # For root path
-html_baseurl = 'https://yourusername.github.io/'
+html_baseurl = 'https://ccaprani.github.io/'
 
 # For subpath (default)
-html_baseurl = 'https://yourusername.github.io/scholium/'
+html_baseurl = 'https://ccaprani.github.io/scholium/'
 ```
 
 ### Custom Domain
@@ -98,7 +98,7 @@ html_baseurl = 'https://yourusername.github.io/scholium/'
 2. Configure DNS:
    - Type: `CNAME`
    - Name: `docs`
-   - Value: `yourusername.github.io`
+   - Value: `ccaprani.github.io`
 
 3. In repo settings → Pages → Custom domain: `docs.scholium.io`
 

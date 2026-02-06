@@ -396,7 +396,7 @@ for lecture_dir in lecture_dirs:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/scholium.git
+git clone https://github.com/ccaprani/scholium.git
 cd scholium
 
 # Install in editable mode with dev dependencies

@@ -19,7 +19,7 @@ git push origin main
 ### 3. Access Docs
 
 ```
-https://yourusername.github.io/scholium/
+https://ccaprani.github.io/scholium/
 ```
 
 **Done!** Docs auto-deploy on every push.
@@ -92,7 +92,7 @@ git push
 
 2. DNS CNAME record:
    - Name: `docs`
-   - Value: `yourusername.github.io`
+   - Value: `ccaprani.github.io`
 
 3. GitHub: Settings → Pages → Custom domain
 

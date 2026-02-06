@@ -7,6 +7,7 @@ from typing import Dict, Any
 from elevenlabs.client import ElevenLabs
 from pydub import AudioSegment
 from .base import TTSProvider
+from typing import Optional
 
 
 class ElevenLabsProvider(TTSProvider):

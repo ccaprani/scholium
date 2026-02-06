@@ -27,7 +27,7 @@ git push origin main
 ### 3. Access Docs
 
 ```
-https://yourusername.github.io/scholium/
+https://ccaprani.github.io/scholium/
 ```
 
 **Done!** Docs auto-deploy on every push to main.
@@ -79,10 +79,7 @@ docs/
 │   ├── timing-control.md
 │   └── tts-providers.md
 │
-├── api/                         # API reference (RST)
-│   ├── cli.rst                 # CLI commands
-│   └── modules.rst             # Auto-generated from code
-│
+├── api.rst                      # API reference (RST)
 ├── examples.md                  # Markdown
 ├── troubleshooting.md           # Markdown
 └── contributing.md              # Markdown
