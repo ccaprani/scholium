@@ -8,13 +8,14 @@ pandoc_template: "beamer"  # Pandoc template for slide generation
 # TTS settings
 # Available providers: piper, elevenlabs, coqui, openai, bark
 # Install with: pip install scholium[provider_name]
-tts_provider: "piper"  # Default: piper (fast, free, local)
-voice: "en_US-lessac-medium"  # Voice name (provider-specific)
+tts_provider: "elevenlabs"  # Default: piper (fast, free, local)
+voice: "Xb7hH8MSUJpSbSDYk0k2" # Voice name (provider-specific)
 
 # Piper TTS settings (recommended for getting started - FREE!)
 # Install with: pip install scholium[piper]
 # Voices download automatically from HuggingFace on first use
 piper:
+  voice: "en_US-lessac-medium"
   # Available voices:
   # - en_US-lessac-medium (male, clear)
   # - en_US-amy-medium (female, clear)
@@ -39,8 +40,9 @@ coqui:
 # Use environment variable instead: export ELEVENLABS_API_KEY="your_key"
 elevenlabs:
   api_key: ""  # Leave empty - use ELEVENLABS_API_KEY environment variable
-  model: "eleven_monolingual_v1"
-  # Get voice_id from elevenlabs.io after cloning your voice
+  model: "eleven_multilingual_v2"
+  voice: "Xb7hH8MSUJpSbSDYk0k2"  # Alice - Clear, Engaging Educator
+  # voice: ZGuEOd751j7qVTkXR73w # Colin
 
 # OpenAI TTS settings
 # Install with: pip install scholium[openai]
@@ -76,6 +78,7 @@ verbose: true  # Show detailed progress
 
 # Timing defaults (can be overridden per-slide in transcript)
 timing:
-  default_pre_delay: 0.0   # Default pause before speaking (seconds)
-  default_post_delay: 0.0  # Default pause after speaking (seconds)
-  min_slide_duration: 3.0  # Minimum duration for any slide (seconds)
+  default_pre_delay: 2.0   # Default pause before speaking (seconds)
+  default_post_delay: 1.0  # Default pause after speaking (seconds)
+  min_slide_duration: 4.0  # Minimum duration for any slide (seconds)
+  silent_slide_duration: 3.0  # Duration for silent TOC/section slides

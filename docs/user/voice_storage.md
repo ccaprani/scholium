@@ -113,7 +113,7 @@ Each provider gets its own subdirectory:
 Directories are created automatically on first use:
 
 ```python
-from src.config import Config
+from scholium.config import Config
 
 cfg = Config()
 cfg.ensure_dirs()  # Creates voices_dir, temp_dir, output_dir

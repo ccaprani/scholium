@@ -9,9 +9,9 @@ import shutil
 from pathlib import Path
 import pytest
 
-from src.config import Config
-from src.voice_manager import VoiceManager
-from src.unified_parser import UnifiedParser, validate_slides
+from scholium.config import Config
+from scholium.voice_manager import VoiceManager
+from scholium.unified_parser import UnifiedParser, validate_slides
 
 
 @pytest.mark.unit
@@ -130,16 +130,17 @@ class TestUnifiedParser:
         pause_found = False
         for slide in slides:
             for narration in slide.narration_segments:
-                if narration.strip().startswith('[PAUSE'):
+                if narration.strip().startswith("[PAUSE"):
                     pause_found = True
                     # Verify it's a valid pause marker
-                    assert narration.strip().startswith('[PAUSE')
-                    assert narration.strip().endswith(']')
+                    assert narration.strip().startswith("[PAUSE")
+                    assert narration.strip().endswith("]")
                     # Verify it has a duration
                     import re
-                    match = re.match(r'\[PAUSE\s+([\d.]+)s?\]', narration.strip(), re.IGNORECASE)
+
+                    match = re.match(r"\[PAUSE\s+([\d.]+)s?\]", narration.strip(), re.IGNORECASE)
                     assert match is not None, f"Invalid PAUSE format: {narration}"
-        
+
         # If no pauses found, that's okay (depends on test file content)
         # But if found, they should be in correct format
 

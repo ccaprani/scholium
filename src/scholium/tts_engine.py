@@ -9,7 +9,11 @@ class TTSEngine:
     """Manages TTS provider and audio generation."""
 
     def __init__(
-        self, provider_name: str, provider_config: Dict[str, Any] = None, voices_dir: str = None
+        self,
+        provider_name: str,
+        provider_config: Dict[str, Any] = None,
+        voices_dir: str = None,
+        config=None,
     ):
         """Initialize TTS engine.
 
@@ -17,10 +21,12 @@ class TTSEngine:
             provider_name: Name of TTS provider ('piper', 'elevenlabs', 'coqui', 'openai', 'bark')
             provider_config: Configuration for the provider
             voices_dir: Directory for storing voice models and trained voices
+            config: Config object for accessing global settings
         """
         self.provider_name = provider_name.lower()
         self.provider_config = provider_config or {}
         self.voices_dir = voices_dir or "~/.local/share/scholium/voices"
+        self.config = config
         self.provider = self._create_provider()
 
     def _create_provider(self):
@@ -36,7 +42,9 @@ class TTSEngine:
             elif self.provider_name == "elevenlabs":
                 from tts_providers import ElevenLabsProvider
 
-                return ElevenLabsProvider()
+                return ElevenLabsProvider(
+                    model_id=self.provider_config.get("model", "eleven_multilingual_v2"),
+                )
             elif self.provider_name == "coqui":
                 from tts_providers import CoquiProvider
 
@@ -236,9 +244,17 @@ class TTSEngine:
                     if reference_audio is None:
                         reference_audio = str(audio_path)
                 else:
-                    # Empty segment - create minimal silent audio
-                    self._create_silent_audio(str(audio_path), 0.1, reference_audio)
-                    audio_duration = 0.1
+                    # Empty segment - use segment's min_duration or config default
+                    silent_duration = segment.get("min_duration")
+                    if silent_duration is None:
+                        # Fallback to config default (should never happen if main.py works correctly)
+                        silent_duration = (
+                            self.config.get("timing.silent_slide_duration", 3.0)
+                            if self.config
+                            else 3.0
+                        )
+                    self._create_silent_audio(str(audio_path), silent_duration, reference_audio)
+                    audio_duration = silent_duration
 
             # Create enriched segment with all timing info
             enriched_segment = {
@@ -261,8 +277,8 @@ class TTSEngine:
                 total_duration = (
                     audio_duration + segment.get("pre_delay", 0.0) + segment.get("post_delay", 0.0)
                 )
-                # Apply minimum if specified
-                if segment.get("min_duration"):
+                # Apply minimum if specified (check for None, not truthiness, so 0 works)
+                if segment.get("min_duration") is not None:
                     total_duration = max(total_duration, segment.get("min_duration"))
                 enriched_segment["duration"] = total_duration
 

@@ -42,12 +42,29 @@ Generate video::
     scholium generate lecture.md output.mp4
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
+   :caption: User Guide
 
-   user/index
+   user/quickstart
+   user/markdown-format
+   user/narration-format
+   user/incremental-lists
+   user/timing-control
+   user/tts-providers
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api/cli
+   api/modules
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Additional Resources
+
    examples
    troubleshooting
-   api/index
    contributing
 
 Key Features

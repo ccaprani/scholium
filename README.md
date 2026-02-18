@@ -2,9 +2,9 @@
 
 **Automated instructional video generation from markdown.**
 
-> *Scholium* (Greek: ÏƒÏ‡ÏŒÎ»Î¹Î¿Î½) - An explanatory note or commentary. Your digital scholium for the modern classroom.
+> *Scholium* (Greek: σχόλιον) - An explanatory note or commentary. Your digital scholium for the modern classroom.
 
-Convert markdown slides + transcript into professional narrated videos. Perfect for flipped classroom content, educational modules, and maintaining large lesson libraries.
+Convert markdown slides with embedded narration into professional videos. Perfect for flipped classroom content, lecture recordings, and maintaining course libraries.
 
 ---
 
@@ -14,38 +14,50 @@ Convert markdown slides + transcript into professional narrated videos. Perfect 
 # 1. Install (requires Python 3.11+, pandoc, ffmpeg)
 pip install scholium[piper]  # Install with Piper TTS (recommended)
 
-# 2. Generate your first video
-scholium generate examples/slides.md examples/transcript.txt output.mp4
+# 2. Create a markdown file with embedded narration
+cat > lecture.md << 'EOF'
+---
+title: "Introduction to Mechanics"
+slide-level: 2  # Use ## for slides, # for sections
+---
 
-# 3. That's it! Your video is ready.
+# Course Overview
+
+## Newton's Laws
+
+Newton formulated three fundamental laws of motion.
+
+::: notes
+Welcome! Today we'll explore Newton's three laws of motion,
+which form the foundation of classical mechanics.
+:::
+
+## First Law
+
+An object in motion stays in motion unless acted upon by force.
+
+::: notes
+The first law, also called the law of inertia, tells us that
+objects resist changes to their state of motion.
+:::
+EOF
+
+# 3. Generate video
+scholium generate lecture.md lecture.mp4
+
+# 4. That's it! Your video is ready.
 ```
 
 ---
 
-## Table of Contents
+## Key Features
 
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [TTS Providers](#tts-providers)
-- [Transcript Format](#transcript-format)
-- [Voice Management](#voice-management)
-- [Configuration](#configuration)
-- [Batch Processing](#batch-processing)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
-- [Project Philosophy](#project-philosophy)
-
----
-
-## Features
-
-- **Markdown to Video**: Write slides in markdown, compile with Pandoc/Beamer
-- **Flexible Transcript Timing**: Control slide duration and pauses with simple markup
-- **Multiple TTS Providers**: Choose from Piper (local), ElevenLabs (cloud), Coqui (voice cloning), OpenAI, or Bark
-- **Voice Library**: Manage multiple voices, swap easily between projects
-- **Production Ready**: Batch processing, validation, error recovery
-- **Simple Tool**: Process one lesson at a time, orchestrate with your own scripts
+- 📝 **Unified Markdown Format**: Slides and narration in one file with `::: notes :::` blocks
+- 🎯 **Pandoc Integration**: Full Beamer support with `slide-level` for section-based lectures
+- 🎤 **Multiple TTS Providers**: Piper (local), ElevenLabs (cloud), Coqui (voice cloning), OpenAI, Bark
+- ⏱️ **Flexible Timing**: Control pauses, slide duration, and pacing with simple directives
+- 🔧 **Production Ready**: Batch processing, validation, verbose output
+- 🎨 **Professional Output**: 1080p video with synchronized audio and slides
 
 ---
 
@@ -53,62 +65,31 @@ scholium generate examples/slides.md examples/transcript.txt output.mp4
 
 ### System Requirements
 
-- **Python**: 3.11 or higher
-- **Pandoc**: For converting markdown to PDF
-- **LaTeX**: For Beamer slide compilation (texlive)
-- **FFmpeg**: For video generation
-
-### Install System Dependencies
-
-**Ubuntu/Debian:**
 ```bash
-sudo apt-get update
-sudo apt-get install -y pandoc texlive-latex-base texlive-latex-extra ffmpeg
-```
+# Ubuntu/Debian
+sudo apt-get install pandoc texlive-latex-base texlive-latex-extra ffmpeg
 
-**macOS:**
-```bash
+# macOS
 brew install pandoc mactex ffmpeg
-```
 
-**Windows:**
-```bash
+# Windows
 choco install pandoc miktex ffmpeg
 ```
 
 ### Install Scholium
 
-Choose your TTS provider during installation:
-
 ```bash
-# Recommended: Piper (fast, modern, local, no API key)
+# Recommended: Piper (fast, local, no API key needed)
 pip install scholium[piper]
 
-# Or choose another provider:
-pip install scholium[elevenlabs]  # Cloud API, high quality
-pip install scholium[coqui]       # Local with voice cloning (dependency issues)
-pip install scholium[openai]      # OpenAI TTS API
-pip install scholium[bark]        # Local, highest quality (slow)
+# Or other providers:
+pip install scholium[elevenlabs]  # High quality cloud API
+pip install scholium[coqui]       # Local voice cloning
+pip install scholium[openai]      # OpenAI TTS
+pip install scholium[bark]        # Highest quality, slowest
 
-# Install multiple providers:
-pip install scholium[piper,elevenlabs]
-
-# Install all providers:
+# All providers:
 pip install scholium[all]
-```
-
-### Verify Installation
-
-```bash
-# Check system dependencies
-pandoc --version
-ffmpeg -version
-
-# Run tests
-pytest
-
-# Generate test video
-scholium generate tests/test_slides.md tests/test_transcript.txt test.mp4
 ```
 
 ---
@@ -118,477 +99,422 @@ scholium generate tests/test_slides.md tests/test_transcript.txt test.mp4
 ### Basic Command
 
 ```bash
-scholium generate <slides.md> <transcript.txt> <output.mp4>
+scholium generate slides.md output.mp4 [options]
 ```
 
-### Options
+### Common Options
 
-- `--voice NAME`: Voice to use (default: from config)
+- `--voice NAME`: Voice ID to use (e.g., `en_US-lessac-medium` for Piper, or ElevenLabs voice ID)
 - `--provider NAME`: TTS provider (piper, elevenlabs, coqui, openai, bark)
-- `--config PATH`: Path to config file (default: config.yaml)
-- `--keep-temp`: Keep temporary files for debugging
+- `--section-duration SECONDS`: Duration for silent section/TOC slides (default: 3.0)
 - `--verbose`: Show detailed progress
+- `--keep-temp`: Keep temporary files for debugging
 
 ### Example
 
 ```bash
-scholium generate \
-    lecture_01/slides.md \
-    lecture_01/transcript.txt \
-    lecture_01.mp4 \
-    --voice en_US-lessac-medium \
+# With Piper (local)
+scholium generate lecture.md lecture.mp4 \
     --provider piper \
+    --voice en_US-lessac-medium \
+    --section-duration 2.0 \
     --verbose
+
+# With ElevenLabs (cloud)
+export ELEVENLABS_API_KEY="your_key"
+scholium generate lecture.md lecture.mp4 \
+    --provider elevenlabs \
+    --voice Xb7hH8MSUJpSbSDYk0k2  # Alice - Clear, Engaging Educator
 ```
+
+---
+
+## Markdown Format
+
+### Structure
+
+Scholium uses standard Pandoc markdown with embedded `::: notes :::` blocks for narration:
+
+```markdown
+---
+title: "My Lecture"
+author: "Your Name"
+slide-level: 2  # Use ## for slides, # for sections
+---
+
+# Section Title
+
+<!-- This creates a table-of-contents slide (no narration needed) -->
+
+## First Slide
+
+Your slide content here.
+
+::: notes
+This narration will be spoken over the slide.
+You can use multiple paragraphs.
+:::
+
+## Second Slide
+
+More content.
+
+::: notes
+:: Reference: See textbook page 47
+:: Author note: Double-check this calculation
+
+This narration will be spoken.
+Lines starting with :: are metadata - not narrated.
+<!-- HTML comments are also ignored -->
+
+More spoken narration here.
+:::
+
+# Another Section
+
+## Third Slide
+
+Content continues.
+
+::: notes
+And so does the narration.
+:::
+```
+
+**Notes blocks can contain:**
+- **Narration text**: Regular text is converted to speech
+- **Metadata** (`:: prefix`): Author notes, references, reminders - not narrated
+- **HTML comments** (`<!-- -->`): Also ignored during narration
+- **Timing directives**: `[MIN 10s]`, `[PRE 2s]`, etc. - control timing, not spoken
+
+### Slide Levels (Pandoc Integration)
+
+Use the `slide-level` in YAML frontmatter to control slide structure:
+
+**`slide-level: 1` (default)**: Each `#` heading creates a slide
+```markdown
+---
+slide-level: 1
+---
+
+# Slide One
+Content
+
+::: notes
+Narration
+:::
+
+# Slide Two
+Content
+
+## Just a subheading within Slide Two
+
+::: notes
+More narration
+:::
+```
+
+**`slide-level: 2` (for section-based lectures)**: `#` creates sections with TOC slides, `##` creates content slides
+```markdown
+---
+slide-level: 2
+---
+
+# Section Title
+<!-- Auto-generates TOC slide, no narration needed -->
+
+## Actual Slide One
+Content
+
+::: notes
+Narration for slide one
+:::
+
+## Actual Slide Two
+Content
+
+::: notes
+Narration for slide two
+:::
+```
+
+### Timing Control
+
+Add timing directives inside `::: notes :::` blocks:
+
+```markdown
+## Complex Diagram
+
+[Large diagram image]
+
+::: notes
+:: Reference: Figure adapted from Smith et al. (2023)
+:: TODO: Update with latest data next semester
+
+[MIN 15s] [PRE 2s] [POST 3s]
+
+Take a moment to examine this diagram.
+[PAUSE 2s]
+Notice the three main components...
+:::
+```
+
+**Available directives:**
+- `[MIN 10s]` - Minimum slide duration (even if narration is shorter)
+- `[PRE 2s]` - Pause 2 seconds before speaking
+- `[POST 3s]` - Pause 3 seconds after speaking
+- `[PAUSE 2s]` - 2-second mid-narration pause
+- `[DUR 5s]` - Fixed duration (overrides everything)
+
+**Metadata in notes** (prefixed with `::`):
+- Not converted to speech
+- Useful for references, author notes, TODOs
+- Helps maintain context when editing lectures
+
+### Incremental Bullets
+
+Use `>-` for incremental bullet reveals (Pandoc/Beamer syntax):
+
+```markdown
+## Key Points
+
+>- First point appears
+>- Then second point
+>- Finally third point
+
+::: notes
+Let's look at three key points.
+
+First, we have the foundation concept.
+
+Second, the application of that concept.
+
+And third, the implications for our work.
+:::
+```
+
+Each bullet creates a new slide page. Split your narration into paragraphs (separated by blank lines) to match.
 
 ---
 
 ## TTS Providers
 
-Scholium supports multiple TTS engines. Each has different trade-offs:
-
 | Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost |
 |----------|------|---------|-------|---------------|---------|------|
-| **Piper** | Local | Medium-High | Fast | âŒ | âŒ | Free |
-| ElevenLabs | Cloud | Very High | Fast | âœ… | âœ… | Free tier + paid |
-| Coqui | Local | High | Medium | âœ… | âŒ | Free |
-| OpenAI | Cloud | High | Fast | âŒ | âœ… | Paid |
-| Bark | Local | Very High | Slow | âš ï¸ | âŒ | Free |
+| **Piper** | Local | Medium-High | Fast | ✗ | ✗ | Free |
+| ElevenLabs | Cloud | Very High | Fast | ✓ | ✓ | Free tier + paid |
+| Coqui | Local | High | Medium | ✓ | ✗ | Free |
+| OpenAI | Cloud | High | Fast | ✗ | ✓ | Paid |
+| Bark | Local | Very High | Slow | ⚠️ | ✗ | Free |
 
-### Piper (Recommended for Getting Started)
+### Piper (Recommended)
 
 ```bash
-# Install
 pip install scholium[piper]
+scholium generate lecture.md output.mp4 --provider piper
+```
 
-# Use directly
-scholium generate slides.md transcript.txt output.mp4 --provider piper
+Available voices: `en_US-lessac-medium`, `en_US-amy-medium`, `en_GB-alan-medium`, etc.
 
-# Available voices: en_US-lessac-medium, en_US-amy-medium, en_GB-alan-medium, etc.
+### ElevenLabs (Highest Quality)
+
+```bash
+pip install scholium[elevenlabs]
+export ELEVENLABS_API_KEY="your_key"
+
+# List available voices
+python -c "
+from elevenlabs.client import ElevenLabs
+import os
+client = ElevenLabs(api_key=os.getenv('ELEVENLABS_API_KEY'))
+for v in client.voices.get_all().voices:
+    print(f'{v.name:20s} - {v.voice_id}')
+"
+
+# Use with voice ID
+scholium generate lecture.md output.mp4 \
+    --provider elevenlabs \
+    --voice Xb7hH8MSUJpSbSDYk0k2  # Alice
 ```
 
 ### Coqui (Voice Cloning)
 
 ```bash
-# Install
 pip install scholium[coqui]
 
-# Train a voice from your audio sample
-scholium-train train \
+# Train from your audio sample (30s minimum, 1hr+ ideal)
+scholium train-voice \
     --name my_voice \
     --provider coqui \
-    --sample my_lecture_recording.wav
+    --sample recording.wav
 
 # Use your cloned voice
-scholium generate slides.md transcript.txt output.mp4 \
-    --voice my_voice \
-    --provider coqui
-```
-
-**Note**: Coqui works best with 30+ seconds of audio, excellent with 1+ hour.
-
-### ElevenLabs (Highest Quality)
-
-```bash
-# Install
-pip install scholium[elevenlabs]
-
-# Set API key
-export ELEVENLABS_API_KEY="your_api_key_here"
-
-# Use
-scholium generate slides.md transcript.txt output.mp4 \
-    --voice <voice_id> \
-    --provider elevenlabs
-```
-
----
-
-## Transcript Format
-
-### Basic Format with Slide Markers
-
-Use `[NEXT]` to indicate slide transitions:
-
-```
-This is the narration for slide 1.
-It can span multiple lines.
-
-[NEXT]
-
-Now we're on slide 2.
-The marker causes a slide transition.
-
-[NEXT]
-
-And so on for each slide.
-```
-
-### Advanced Format with Timing Control
-
-Control slide duration and add pauses:
-
-```
-[NEXT:5s]
-Silent title slide displayed for 5 seconds.
-
-[NEXT]
-Welcome to the lecture. This slide displays for the duration of the audio.
-
-[NEXT:min=10s]
-This complex diagram stays visible for at least 10 seconds,
-even if the audio finishes earlier.
-
-[NEXT:pre=2s]
-A 2-second pause before speaking, giving viewers time to read the slide.
-
-[NEXT:post=3s]
-A 3-second pause after speaking, for reflection.
-
-[NEXT:pre=2s,post=3s,min=15s]
-Combined: 2s pause before, speak, 3s pause after, minimum 15s total.
-
-[NEXT:3s]
-Silent conclusion slide for 3 seconds.
-```
-
-### Timing Parameters
-
-- `[NEXT]` - Basic marker: slide advances with audio
-- `[NEXT:5s]` - Fixed duration: slide shows for exactly 5 seconds (silent)
-- `[NEXT:min=10s]` - Minimum duration: slide shows for at least 10 seconds
-- `[NEXT:pre=2s]` - Pre-delay: 2 second pause before speaking
-- `[NEXT:post=3s]` - Post-delay: 3 second pause after speaking
-- `[NEXT:pre=2s,post=3s,min=15s]` - Combined timing controls
-
-**Use cases:**
-- **Title slides**: `[NEXT:5s]` - Silent display
-- **Complex diagrams**: `[NEXT:min=15s]` - Ensure enough viewing time
-- **Slide transitions**: `[NEXT:pre=2s]` - Give readers time before speaking
-- **Reflection moments**: `[NEXT:post=3s]` - Pause after key points
-
----
-
-## Voice Management
-
-### List Available Voices
-
-```bash
-# List all voices
-scholium-train list
-
-# Show voice details
-scholium-train info --name my_voice
-```
-
-### Train a Voice (Coqui)
-
-```bash
-# From audio file
-scholium-train train \
-    --name my_voice \
+scholium generate lecture.md output.mp4 \
     --provider coqui \
-    --sample my_recording.wav \
-    --language en \
-    --description "My teaching voice"
-```
-
-### Setup Cloud Voice (ElevenLabs)
-
-```bash
-# Link existing ElevenLabs voice
-scholium-train setup \
-    --name my_voice_pro \
-    --provider elevenlabs \
-    --voice-id "abc123..."
+    --voice my_voice
 ```
 
 ---
 
 ## Configuration
 
-Create `config.yaml` in your project directory:
+Create `config.yaml` in your project:
 
 ```yaml
 # Slide settings
-slide_marker: "[NEXT]"
-pandoc_template: "beamer"
+pandoc_template: beamer
 
 # TTS settings
-tts_provider: "piper"
-voice: "en_US-lessac-medium"
+tts_provider: piper
+voice: en_US-lessac-medium
 
-# Piper settings
-piper:
-  quality: "medium"  # low, medium, high
-
-# ElevenLabs settings (if using)
-elevenlabs:
-  api_key: ""  # Or set ELEVENLABS_API_KEY env var
-  model: "eleven_monolingual_v1"
-
-# Coqui settings (if using)
-coqui:
-  model: "tts_models/multilingual/multi-dataset/xtts_v2"
+# Timing defaults
+timing:
+  default_pre_delay: 0.5      # Pause before speaking
+  default_post_delay: 1.0     # Pause after speaking
+  min_slide_duration: 3.0     # Minimum for any slide
+  silent_slide_duration: 2.0  # Duration for TOC/section slides
 
 # Video settings
 resolution: [1920, 1080]
 fps: 30
 
 # Paths
-voices_dir: "./voices"
-temp_dir: "./temp"
-output_dir: "./output"
-
-# Options
+voices_dir: ~/.local/share/scholium/voices
+temp_dir: ./temp
 keep_temp_files: false
 verbose: true
+
+# Provider-specific settings
+piper:
+  quality: medium
+
+elevenlabs:
+  model: eleven_multilingual_v2
+
+coqui:
+  model: tts_models/multilingual/multi-dataset/xtts_v2
+```
+
+---
+
+## Voice Management
+
+### List Trained Voices
+
+```bash
+scholium list-voices
+```
+
+### Train a Voice (Coqui)
+
+```bash
+scholium train-voice \
+    --name my_lecture_voice \
+    --provider coqui \
+    --sample my_recording.wav \
+    --description "My natural teaching voice"
+```
+
+### Regenerate Embeddings
+
+```bash
+# Speed up Coqui voice generation by pre-computing embeddings
+scholium regenerate-embeddings --voice my_lecture_voice
 ```
 
 ---
 
 ## Batch Processing
 
-Scholium processes **one lesson at a time** by design. For batch processing, create a driver script:
-
-### Bash Example
+Process multiple lectures with a simple script:
 
 ```bash
 #!/bin/bash
-# process_all_lectures.sh
-
-for lecture in lectures/*/; do
-    echo "Processing $lecture..."
-    scholium generate \
-        "$lecture/slides.md" \
-        "$lecture/transcript.txt" \
-        "$lecture/output.mp4" \
-        --voice my_voice
+for lecture in lectures/*.md; do
+    output="${lecture%.md}.mp4"
+    scholium generate "$lecture" "$output" --verbose
 done
 ```
 
-### Python Example
+Or use Python:
 
 ```python
-#!/usr/bin/env python3
-import subprocess
 from pathlib import Path
+import subprocess
 
-lecture_dirs = Path("lectures").glob("*/")
-
-for lecture_dir in lecture_dirs:
-    slides = lecture_dir / "slides.md"
-    transcript = lecture_dir / "transcript.txt"
-    output = lecture_dir / "output.mp4"
-    
+for lecture in Path("lectures").glob("*.md"):
+    output = lecture.with_suffix(".mp4")
     subprocess.run([
         "scholium", "generate",
-        str(slides), str(transcript), str(output),
-        "--voice", "my_voice"
+        str(lecture), str(output),
+        "--verbose"
     ])
 ```
 
 ---
 
-## Development
+## Examples
 
-### Setup Development Environment
+See the `examples/` directory for:
+- Basic lecture with sections (`example_level2.md`)
+- Incremental bullets and timing
+- Voice cloning workflow
+- Batch processing scripts
 
-```bash
-# Clone repository
-git clone https://github.com/ccaprani/scholium.git
-cd scholium
+---
 
-# Install in editable mode with dev dependencies
-pip install -e ".[dev,piper]"
+## Performance
 
-# Run tests
-pytest
+**Generation time** (per 10-minute lecture):
+- NVIDIA GPU: 5-10 minutes
+- Apple Silicon: 10-15 minutes  
+- Modern CPU: 30-60 minutes
 
-# Run tests with coverage
-pytest --cov=src --cov=tts_providers --cov-report=html
-```
-
-### Project Structure
-
-```
-scholium/
-├── src/                    # Main package
-│   ├── main.py            # CLI entry point
-│   ├── train_voice.py     # Voice training CLI
-│   ├── config.py          # Configuration management
-│   ├── slide_processor.py # Markdown → PDF → Images
-│   ├── transcript_parser.py # Parse transcripts with timing
-│   ├── voice_manager.py   # Voice library
-│   ├── tts_engine.py      # TTS coordination
-│   └── video_generator.py # Video compilation
-├── tts_providers/         # TTS implementations
-│   ├── base.py           # Abstract provider
-│   ├── piper.py          # Piper TTS
-│   ├── coqui.py          # Coqui TTS
-│   ├── elevenlabs.py     # ElevenLabs API
-│   ├── openai.py         # OpenAI TTS API
-│   └── bark.py           # Bark TTS
-├── tests/                # Test suite
-├── examples/             # Example files
-├── config.yaml          # Default configuration
-└── pyproject.toml       # Package metadata
-```
-
-### Running Tests
-
-```bash
-# All tests
-pytest
-
-# Unit tests only (no external dependencies)
-pytest -m unit
-
-# Integration tests (requires pandoc, ffmpeg)
-pytest -m integration
-
-# Specific test file
-pytest tests/test_core.py
-
-# With verbose output
-pytest -v
-```
+**First run**: Models download automatically (~500MB-1.5GB), cached for future use.
 
 ---
 
 ## Troubleshooting
 
-### Installation Issues
+**"Pandoc not found"**: Install pandoc and LaTeX (see Installation)
 
-**"Pandoc not found"**
-```bash
-# Install pandoc and LaTeX
-sudo apt-get install pandoc texlive-latex-extra  # Ubuntu
-brew install pandoc mactex                        # macOS
-```
+**"Narration bleeding over section slides"**: Make sure you have `slide-level: 2` in your YAML frontmatter
 
-**"FFmpeg not found"**
-```bash
-# Install ffmpeg
-sudo apt-get install ffmpeg  # Ubuntu
-brew install ffmpeg          # macOS
-```
+**"Slide count mismatch"**: Don't add `::: notes :::` after `#` section headings when using `slide-level: 2`
 
-**"Provider not installed"**
-```bash
-# Install the specific provider
-pip install scholium[provider_name]
-```
+**"Voice not found"**: 
+- Piper: Use voice name like `en_US-lessac-medium`
+- ElevenLabs: Use voice ID (run the list command above)
+- Coqui: Use trained voice name from `scholium list-voices`
 
-### Generation Issues
-
-**"Voice not found"**
-```bash
-# List available voices
-scholium-train list
-
-# Verify voice configuration
-scholium-train info --name your_voice
-```
-
-**"Slide/transcript mismatch"**
-- The tool warns if segments don't match slides
-- Too few segments: Last slides will be silent
-- Too many segments: Extra segments ignored
-- Add/remove `[NEXT]` markers to align
-
-**"Out of memory"**
+**"Out of memory"**: 
 - Close other applications
-- Process lessons one at a time
-- Use CPU instead of GPU: `export CUDA_VISIBLE_DEVICES=""`
+- Use `export CUDA_VISIBLE_DEVICES=""` to force CPU
+- Process one lecture at a time
 
-### Performance Issues
+---
 
-**"Generation is very slow"**
-- Normal on CPU (30-60 min per 10-min lesson)
-- Use GPU if available (5-15 min per lesson)
-- Run overnight for batches
-- Consider faster TTS provider (Piper > Coqui > Bark)
+## Documentation
 
-**First run downloads models**
-- Piper/Coqui download models on first use (~500MB - 1.5GB)
-- Be patient, models are cached
-- Only happens once per voice/model
+- **Full docs**: https://ccaprani.github.io/scholium
+- **Examples**: `examples/` directory
+- **Issues**: GitHub Issues
+- **API reference**: Run `scholium --help`
 
 ---
 
 ## Project Philosophy
 
-### Name Origin
+**Simple tool, not a framework**. Scholium does one thing well: converts markdown+narration into video. It integrates with your existing workflow rather than replacing it.
 
-**Scholium** comes from Greek *ÏƒÏ‡ÏŒÎ»Î¹Î¿Î½* (scholion), meaning an explanatory note or commentary. In classical education, scholia were marginal annotations that provided context and explanation—exactly what instructional videos do for educational content.
+**Text-first**. Everything is plain text (markdown + YAML), so it's:
+- Version controllable (Git)
+- Searchable and editable
+- Reproducible across systems
+- Easy to maintain
 
-### Design Principles
-
-**Simple Tool, Not Framework**
-- Process one lesson at a time
-- Composable with your own scripts
-- Do one thing well
-- No lock-in to complex pipelines
-
-**Text-First Workflow**
-- Markdown for slides (via Pandoc/Beamer)
-- Plain text for transcripts
-- Git-friendly, version-controllable
-- Reproducible builds
-
-**Flexible TTS Options**
-- Start with free local TTS (Piper)
-- Upgrade to cloud services if needed (ElevenLabs)
-- Voice cloning available (Coqui)
-- Abstracted: easy to add new providers
-
-### Use Cases
-
-**Primary: Flipped Classroom**
-- 5-15 minute lessons for pre-class preparation
-- Focused, single-concept explanations
-- Students watch before class
-- In-class time for practice/discussion
-
-**Secondary: Course Libraries**
-- University course modules
-- Professional development training
-- Technical certification prep
-- Self-paced learning platforms
-
-**Tertiary: Content Updates**
-- Fix errors in slides without re-recording
-- Update statistics/examples
-- Modernize visual templates
-- Maintain consistency across semesters
-
----
-
-## Expected Performance
-
-### Generation Time (per 10-minute lecture)
-
-- **NVIDIA GPU**: 5-10 minutes
-- **Apple Silicon**: 10-15 minutes
-- **Modern CPU**: 30-60 minutes
-
-### Quality Expectations
-
-**Piper (Recommended):**
-- Voice quality: 7/10
-- Speed: Fast
-- Cost: Free
-
-**Coqui (with 1-hour voice sample):**
-- Voice similarity: 75-85%
-- Naturalness: 7.5-8/10
-- Cost: Free
-
-**ElevenLabs:**
-- Voice quality: 9/10
-- Speed: Very fast
-- Cost: ~$2-3 per 10-min lecture
+**Pandoc-native**. Uses standard Beamer slide syntax, so your slides work in LaTeX/Beamer too.
 
 ---
 
@@ -600,17 +526,12 @@ MIT License - see LICENSE file
 
 ## Contributing
 
-Contributions welcome! This is a focused tool with a specific workflow, but improvements and new TTS providers are always appreciated.
+Contributions welcome! Focus areas:
+- New TTS provider integrations
+- Performance improvements
+- Documentation and examples
+- Bug fixes
 
 ---
 
-## Support
-
-- **Documentation**: This README
-- **Issues**: GitHub Issues
-- **Examples**: See `examples/` directory
-- **Tests**: Run `pytest` to validate installation
-
----
-
-**Scholium: Your digital scholium for the modern classroom.** ðŸŽ"
+**Scholium: Your digital scholium for the modern classroom.** 📖

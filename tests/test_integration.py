@@ -14,10 +14,10 @@ import pytest
 import shutil
 from pathlib import Path
 
-from src.config import Config
-from src.slide_processor import SlideProcessor
-from src.unified_parser import UnifiedParser, validate_slides
-from src.video_generator import VideoGenerator
+from scholium.config import Config
+from scholium.slide_processor import SlideProcessor
+from scholium.unified_parser import UnifiedParser, validate_slides
+from scholium.video_generator import VideoGenerator
 
 
 @pytest.fixture

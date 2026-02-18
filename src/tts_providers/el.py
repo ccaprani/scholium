@@ -50,7 +50,7 @@ class ElevenLabsProvider(TTSProvider):
         if not voice_id:
             raise ValueError("voice_id required in voice_config for ElevenLabs")
 
-        model_id = voice_config.get("model_id", self.model_id)
+        model_id = voice_config.get("model", self.model_id)
         output_format = voice_config.get("output_format", self.output_format)
         voice_settings = voice_config.get("voice_settings")  # optional; may vary by SDK version
 

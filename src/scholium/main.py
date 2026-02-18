@@ -10,11 +10,11 @@ from tqdm import tqdm
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config import Config
-from src.slide_processor import SlideProcessor
-from src.voice_manager import VoiceManager
-from src.tts_engine import TTSEngine
-from src.video_generator import VideoGenerator
+from scholium.config import Config
+from scholium.slide_processor import SlideProcessor
+from scholium.voice_manager import VoiceManager
+from scholium.tts_engine import TTSEngine
+from scholium.video_generator import VideoGenerator
 
 
 @click.group()
@@ -39,7 +39,7 @@ def train_voice(name, provider, sample, description, language, config):
     Example:
         scholium train-voice --name my_voice --sample audio.wav
     """
-    from src.voice_manager import VoiceManager
+    from scholium.voice_manager import VoiceManager
 
     # Load config to get voices_dir
     cfg = Config(config)
@@ -130,7 +130,7 @@ def regenerate_embeddings(voice, config):
     Example:
         scholium regenerate-embeddings --voice my_voice
     """
-    from src.voice_manager import VoiceManager
+    from scholium.voice_manager import VoiceManager
 
     cfg = Config(config)
     cfg.ensure_dirs()
@@ -453,7 +453,7 @@ def provider_info(provider_name):
 @click.option("--config", default="config.yaml", help="Path to config file")
 def list_voices(config):
     """List all available voices."""
-    from src.voice_manager import VoiceManager
+    from scholium.voice_manager import VoiceManager
 
     # Load config to get voices_dir
     cfg = Config(config)
@@ -486,8 +486,15 @@ def list_voices(config):
 @click.argument("slides_md", type=click.Path(exists=True))
 @click.argument("output_mp4", type=click.Path())
 @click.option("--voice", default=None, help="Voice name (default: from config)")
+@click.option("--model", default=None, help="TTS model ID (default: from config/provider)")
 @click.option("--provider", default=None, help="TTS provider (default: from config)")
 @click.option("--config", default="config.yaml", help="Path to config file")
+@click.option(
+    "--section-duration",
+    type=float,
+    default=None,
+    help="Duration for slides without narration (default: 3.0s)",
+)
 @click.option("--keep-temp", is_flag=True, help="Keep temporary files")
 @click.option("--verbose", is_flag=True, help="Verbose output")
 @click.option("--no-pdf", is_flag=True, help="Don't save slides as PDF")
@@ -498,8 +505,10 @@ def generate(
     slides_md,
     output_mp4,
     voice,
+    model,
     provider,
     config,
+    section_duration,
     keep_temp,
     verbose,
     no_pdf,
@@ -510,6 +519,10 @@ def generate(
     """Generate video from markdown slides with embedded notes.
 
     The markdown file should contain ::: notes ::: blocks for narration.
+
+    Slide level is controlled by 'slide-level' in YAML frontmatter (default: 1).
+    - slide-level: 1 means # creates slides, ## is content (default, matches pandoc)
+    - slide-level: 2 means ## creates slides, # creates sections
 
     Examples:
         scholium generate slides.md output.mp4
@@ -523,12 +536,25 @@ def generate(
     # Override config with CLI options
     if voice:
         cfg.set("voice", voice)
+    if model:
+        provider_name = cfg.get("tts_provider")
+        if provider_name == "elevenlabs":
+            cfg.set("elevenlabs.model", model)
+        elif provider_name == "openai":
+            cfg.set("openai.model", model)
+        elif provider_name == "bark":
+            cfg.set("bark.model", model)
+        elif provider_name == "coqui":
+            cfg.set("coqui.model", model)
+        # piper doesn't use model
     if provider:
         cfg.set("tts_provider", provider)
     if keep_temp:
         cfg.set("keep_temp_files", True)
     if verbose:
         cfg.set("verbose", True)
+    if section_duration is not None:
+        cfg.set("timing.silent_slide_duration", section_duration)
 
     is_verbose = cfg.get("verbose")
 
@@ -612,48 +638,72 @@ def generate(
         slides = parser.parse(slides_md)
 
         if is_verbose:
-            click.echo(f"   ✓ Parsed {len(slides)} slides with embedded notes")
-
-        # Validate slides vs generated images
-        validation_warnings = validate_slides(slides, len(slide_images))
-        if validation_warnings:
-            click.echo("\n⚠️  Validation warnings:")
-            for warning in validation_warnings:
-                click.echo(f"   {warning}")
+            slides_with_narration = sum(1 for s in slides if s.has_narration)
+            slides_without_narration = len(slides) - slides_with_narration
+            click.echo(f"   ✓ Parsed {len(slides)} slides from markdown")
+            click.echo(f"     • {slides_with_narration} with narration")
+            if slides_without_narration > 0:
+                click.echo(
+                    f"     • {slides_without_narration} without narration (will show for {cfg.get('timing.min_slide_duration', 3.0)}s)"
+                )
 
         # Expand slides into segments
         segments = []
         pdf_page_index = 0
 
         for slide in slides:
-            # Determine if this slide creates multiple PDF pages (incremental bullets)
-            is_incremental = slide.is_incremental
-            bullet_count = slide.markdown_content.count(">-") if is_incremental else 1
-
-            for i, narration_text in enumerate(slide.narration_segments):
+            # Check if slide has no narration
+            if not slide.narration_segments or all(
+                not seg.strip() for seg in slide.narration_segments
+            ):
+                # Create a single silent segment with default duration
+                default_duration = cfg.get("timing.silent_slide_duration", 3.0)
+                if slide.min_duration is not None:
+                    default_duration = slide.min_duration
                 segment = {
-                    "text": narration_text,
+                    "text": "",  # Empty text = silent
                     "slide_number": pdf_page_index + 1,
-                    "min_duration": slide.min_duration,
-                    "pre_delay": slide.pre_delay if i == 0 else 0.0,
-                    "post_delay": slide.post_delay
-                    if i == len(slide.narration_segments) - 1
-                    else 0.0,
+                    "min_duration": default_duration,
+                    "pre_delay": slide.pre_delay,
+                    "post_delay": slide.post_delay,
                 }
                 segments.append(segment)
+                pdf_page_index += 1
+            else:
+                # Slide has narration - determine if incremental
+                is_incremental = slide.is_incremental
+                bullet_count = slide.markdown_content.count(">-") if is_incremental else 1
 
-                # Only increment page index for actual PDF pages
-                # For incremental slides: each narration segment = new page (one per bullet)
-                # For non-incremental: all segments share the same page
-                if is_incremental:
+                for i, narration_text in enumerate(slide.narration_segments):
+                    segment = {
+                        "text": narration_text,
+                        "slide_number": pdf_page_index + 1,
+                        "min_duration": slide.min_duration,
+                        "pre_delay": slide.pre_delay if i == 0 else 0.0,
+                        "post_delay": (
+                            slide.post_delay if i == len(slide.narration_segments) - 1 else 0.0
+                        ),
+                    }
+                    segments.append(segment)
+
+                    # Only increment page index for actual PDF pages
+                    # For incremental slides: each narration segment = new page (one per bullet)
+                    # For non-incremental: all segments share the same page
+                    if is_incremental:
+                        pdf_page_index += 1
+
+                # For non-incremental slides, increment once after all segments
+                if not is_incremental:
                     pdf_page_index += 1
 
-            # For non-incremental slides, increment once after all segments
-            if not is_incremental:
-                pdf_page_index += 1
-
         if is_verbose:
-            click.echo(f"   ✓ Generated {len(segments)} narration segments")
+            narrated_segments = sum(1 for s in segments if s["text"].strip())
+            silent_segments = len(segments) - narrated_segments
+            click.echo(f"   ✓ Generated {len(segments)} segments:")
+            click.echo(f"     • {narrated_segments} with narration")
+            if silent_segments > 0:
+                click.echo(f"     • {silent_segments} silent (section/TOC slides)")
+            click.echo(f"     • Total video pages: {len(slide_images)}")
 
         # Step 3: Load voice and generate audio
         if is_verbose:
@@ -678,10 +728,13 @@ def generate(
         else:
             # Provider uses its own voice names (Piper, OpenAI, Bark)
             # Voice name is passed directly to the provider
-            voice_config = {"voice": voice_name, "provider": provider_name}
+            voice_config = {
+                "voice": voice_name,
+                "provider": provider_name,
+            }
 
         tts_engine = TTSEngine(
-            provider_name=provider_name, provider_config=cfg.get(provider_name, {})
+            provider_name=provider_name, provider_config=cfg.get(provider_name, {}), config=cfg
         )
 
         audio_output_dir = temp_dir / "audio"
