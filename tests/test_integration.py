@@ -23,7 +23,7 @@ from scholium.video_generator import VideoGenerator
 @pytest.fixture
 def test_data_dir():
     """Get test data directory."""
-    return Path(__file__).parent
+    return Path(__file__).parent / "data"
 
 
 @pytest.fixture

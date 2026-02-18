@@ -16,9 +16,16 @@ from scholium.voice_manager import VoiceManager
 from scholium.unified_parser import UnifiedParser, Slide, parse_time_spec, validate_slides
 
 
+@pytest.fixture
+def test_data_dir():
+    """Get test data directory."""
+    return Path(__file__).parent / "data"
+
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestConfig:
@@ -61,6 +68,18 @@ class TestConfig:
         cfg.set("piper.quality", "high")
         assert cfg.get("piper.quality") == "high"
 
+    def test_elevenlabs_key_from_env(self, monkeypatch):
+        """ELEVENLABS_API_KEY environment variable is loaded into config."""
+        monkeypatch.setenv("ELEVENLABS_API_KEY", "test_el_key")
+        cfg = Config(config_path="nonexistent.yaml")
+        assert cfg.get("elevenlabs.api_key") == "test_el_key"
+
+    def test_openai_key_from_env(self, monkeypatch):
+        """OPENAI_API_KEY environment variable is loaded into config."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test_openai_key")
+        cfg = Config(config_path="nonexistent.yaml")
+        assert cfg.get("openai.api_key") == "test_openai_key"
+
     def test_ensure_dirs_creates_and_expands(self, tmp_path):
         """ensure_dirs expands ~ and creates directories."""
         cfg = Config(config_path="nonexistent.yaml")
@@ -75,6 +94,7 @@ class TestConfig:
 # ---------------------------------------------------------------------------
 # parse_time_spec
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestParseTimeSpec:
@@ -100,14 +120,15 @@ class TestParseTimeSpec:
 # UnifiedParser
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestUnifiedParser:
     """Test unified parser functionality."""
 
     @pytest.fixture
-    def test_slides_path(self):
+    def test_slides_path(self, test_data_dir):
         """Path to the bundled test slides file."""
-        return Path(__file__).parent / "test_slides.md"
+        return test_data_dir / "test_slides.md"
 
     # --- frontmatter ---
 
@@ -153,6 +174,7 @@ class TestUnifiedParser:
         """slide-level values other than 1 or 2 raise ValueError."""
         parser = UnifiedParser()
         import io, textwrap
+
         md_file = Path(tempfile.mktemp(suffix=".md"))
         md_file.write_text("---\nslide-level: 3\n---\n# Slide\n")
         with pytest.raises(ValueError, match="slide-level"):
@@ -330,13 +352,14 @@ class TestUnifiedParser:
 # validate_slides
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestValidateSlides:
     """Test validate_slides utility."""
 
     @pytest.fixture
-    def test_slides_path(self):
-        return Path(__file__).parent / "test_slides.md"
+    def test_slides_path(self, test_data_dir):
+        return test_data_dir / "test_slides.md"
 
     def test_no_warnings_when_counts_match(self, test_slides_path):
         """No warnings when PDF pages match slide count."""
@@ -372,6 +395,7 @@ class TestValidateSlides:
 # ---------------------------------------------------------------------------
 # VoiceManager
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestVoiceManager:
@@ -423,9 +447,7 @@ class TestVoiceManager:
     def test_create_voice_unknown_provider_raises(self, voice_manager):
         """Unknown provider raises ValueError."""
         with pytest.raises(ValueError, match="Unknown provider"):
-            voice_manager.create_voice(
-                voice_name="bad", provider="fakeprovider", voice_id="x"
-            )
+            voice_manager.create_voice(voice_name="bad", provider="fakeprovider", voice_id="x")
 
     def test_list_voices(self, voice_manager):
         """list_voices returns all created voice names."""
@@ -487,13 +509,14 @@ class TestVoiceManager:
 # Integration (no external tools required)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestParserSegmentStructure:
     """Verify that parser output matches the structure expected by TTSEngine."""
 
     @pytest.fixture
-    def test_slides_path(self):
-        return Path(__file__).parent / "test_slides.md"
+    def test_slides_path(self, test_data_dir):
+        return test_data_dir / "test_slides.md"
 
     def test_segment_fields_present(self, test_slides_path):
         """All required segment fields are present after pipeline assembly."""

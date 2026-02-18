@@ -51,6 +51,7 @@ Generate video::
    user/incremental-lists
    user/timing-control
    user/tts-providers
+   user/voice-storage
 
 .. toctree::
    :maxdepth: 2

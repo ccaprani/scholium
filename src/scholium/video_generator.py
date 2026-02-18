@@ -1,6 +1,7 @@
 """Video generation using ffmpeg."""
 
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 

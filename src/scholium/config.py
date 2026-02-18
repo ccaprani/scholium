@@ -10,7 +10,6 @@ class Config:
     """Manages application configuration."""
 
     DEFAULT_CONFIG = {
-        "slide_marker": "[NEXT]",
         "pandoc_template": "beamer",
         "tts_provider": "piper",
         "voice": "en_US-lessac-medium",

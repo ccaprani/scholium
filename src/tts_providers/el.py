@@ -3,15 +3,16 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+
 from elevenlabs.client import ElevenLabs
 from pydub import AudioSegment
+
 from .base import TTSProvider
-from typing import Optional
 
 
 class ElevenLabsProvider(TTSProvider):
-    """ElevenLabs text-to-speech provider (legacy API)."""
+    """ElevenLabs text-to-speech provider."""
 
     def __init__(
         self,
@@ -19,11 +20,16 @@ class ElevenLabsProvider(TTSProvider):
         model_id: str = "eleven_multilingual_v2",
         output_format: str = "mp3_44100_128",
     ) -> None:
-        """
+        """Initialise the ElevenLabs provider.
+
         Args:
-            api_key: ElevenLabs API key (defaults to ELEVENLABS_API_KEY env var).
-            model_id: ElevenLabs model ID.
-            output_format: ElevenLabs output format (e.g. 'mp3_44100_128', 'wav').
+            api_key: ElevenLabs API key. Defaults to the ``ELEVENLABS_API_KEY``
+                environment variable when not supplied.
+            model_id: ElevenLabs model ID to use for synthesis.
+            output_format: Audio output format (e.g. ``'mp3_44100_128'``, ``'wav'``).
+
+        Raises:
+            ValueError: If no API key is available from either source.
         """
         api_key = api_key or os.getenv("ELEVENLABS_API_KEY")
         if not api_key:
@@ -37,32 +43,34 @@ class ElevenLabsProvider(TTSProvider):
         self.output_format = output_format
 
     def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:
-        """
-        voice_config:
-            Required:
-              - voice_id: str
-            Optional:
-              - model_id: str (override provider default)
-              - output_format: str (override provider default)
-              - voice_settings: dict (if supported by your SDK version)
+        """Generate audio from text using the ElevenLabs API.
+
+        Args:
+            text: Text to convert to speech.
+            voice_config: Voice configuration dictionary. Recognised keys:
+
+                - ``voice`` (str, required): Voice name or ElevenLabs voice ID.
+                - ``model`` (str, optional): Override the provider's model ID.
+                - ``output_format`` (str, optional): Override the provider's output format.
+                - ``voice_settings`` (dict, optional): Provider voice-settings payload.
+
+            output_path: Filesystem path where the audio file will be saved.
+
+        Returns:
+            Path to the generated audio file.
+
+        Raises:
+            ValueError: If the voice cannot be resolved.
+            RuntimeError: If audio generation fails.
         """
         voice_id = self._resolve_voice_id(voice_config["voice"])
-        if not voice_id:
-            raise ValueError("voice_id required in voice_config for ElevenLabs")
 
         model_id = voice_config.get("model", self.model_id)
         output_format = voice_config.get("output_format", self.output_format)
-        voice_settings = voice_config.get("voice_settings")  # optional; may vary by SDK version
+        voice_settings = voice_config.get("voice_settings")
 
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-
-        # Optional sanity: avoid obvious mismatch (mp3 bytes into .wav filename, etc.)
-        # If you want strict enforcement, uncomment the block below.
-        # if output_format.startswith("mp3") and out.suffix.lower() not in {".mp3", ""}:
-        #     out = out.with_suffix(".mp3")
-        # if output_format == "wav" and out.suffix.lower() not in {".wav", ""}:
-        #     out = out.with_suffix(".wav")
 
         try:
             audio_iter = self.client.text_to_speech.convert(
@@ -70,7 +78,7 @@ class ElevenLabsProvider(TTSProvider):
                 voice_id=voice_id,
                 model_id=model_id,
                 output_format=output_format,
-                voice_settings=voice_settings,  # remove if your installed SDK rejects it
+                voice_settings=voice_settings,
             )
 
             with out.open("wb") as f:
@@ -79,30 +87,37 @@ class ElevenLabsProvider(TTSProvider):
 
             return str(out)
 
-        except TypeError:
-            # Some SDK versions don't accept voice_settings/output_format. Retry minimally.
-            try:
-                audio_iter = self.client.text_to_speech.convert(
-                    text=text,
-                    voice_id=voice_id,
-                    model_id=model_id,
-                )
-                with out.open("wb") as f:
-                    for chunk in audio_iter:
-                        f.write(chunk)
-                return str(out)
-            except Exception as e:
-                raise RuntimeError(f"ElevenLabs audio generation failed: {e}") from e
-
         except Exception as e:
             raise RuntimeError(f"ElevenLabs audio generation failed: {e}") from e
 
     def get_audio_duration(self, audio_path: str) -> float:
-        """Get duration of audio file in seconds."""
+        """Return the duration of an audio file in seconds.
+
+        Args:
+            audio_path: Path to audio file.
+
+        Returns:
+            Duration in seconds.
+        """
         audio = AudioSegment.from_file(audio_path)
         return audio.duration_seconds
 
     def _resolve_voice_id(self, voice: str) -> str:
+        """Resolve a voice name or ID to a canonical ElevenLabs voice ID.
+
+        Accepts either a bare voice ID or a voice name (full or the prefix
+        before `` - `` in compound names).  Performs a case-insensitive match
+        against the account's available voices.
+
+        Args:
+            voice: Voice name or voice ID string.
+
+        Returns:
+            The resolved ElevenLabs voice ID.
+
+        Raises:
+            ValueError: If ``voice`` is empty or cannot be matched.
+        """
         if not isinstance(voice, str) or not voice.strip():
             raise ValueError("voice must be a non-empty string")
 
@@ -125,13 +140,13 @@ class ElevenLabsProvider(TTSProvider):
                 )
             return name, vid
 
-        # 1) If it's already a voice_id, accept it
+        # 1) If it's already a voice_id, accept it directly.
         for v in voices:
             _, vid = get_fields(v)
             if isinstance(vid, str) and vid == voice_raw:
                 return vid
 
-        # 2) Match full name OR short name (prefix before " - ")
+        # 2) Match full name OR short name (prefix before " - ").
         for v in voices:
             name, vid = get_fields(v)
             if not (isinstance(name, str) and isinstance(vid, str)):

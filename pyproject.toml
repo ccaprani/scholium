@@ -92,7 +92,6 @@ content-type = "text/markdown"
 
 [project.scripts]
 scholium = "scholium.main:cli"
-scholium-train = "scholium.train_voice:cli"
 
 [project.urls]
 Homepage = "https://github.com/ccaprani/scholium"
