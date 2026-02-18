@@ -1,17 +1,17 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "scholium"
 dynamic = ["version"]
-description = "Generate educational videos from slides and transcripts with AI voice synthesis"
+description = "Generate educational videos from markdown slides with AI voice synthesis"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Colin Caprani", email = "colin.caprani@monash.edu"}
 ]
-keywords = ["tts", "education", "video", "slides", "lecture"]
+keywords = ["tts", "education", "video", "slides", "lecture", "pandoc", "beamer"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Education",
@@ -22,7 +22,6 @@ classifiers = [
 ]
 
 dependencies = [
-    # Core dependencies - always required
     "pyyaml>=6.0",
     "click>=8.0",
     "pdf2image>=1.16.0",
@@ -30,50 +29,51 @@ dependencies = [
     "ffmpeg-python>=0.2.0",
     "pydub>=0.25.0",
     "tqdm>=4.65.0",
-    "torch>=2.10.0",
-    "torchaudio>=2.5.0",
 ]
 
 [project.optional-dependencies]
-# Piper TTS - Fast, modern, local TTS (RECOMMENDED)
-# Actively maintained, good quality, no dependency issues
+# Piper TTS - Fast, local, no API key (recommended)
 piper = [
     "piper-tts>=1.2.0",
     "pathvalidate>=3.0.0",
 ]
 
-# ElevenLabs - Cloud API (requires API key, paid after free tier)
+# ElevenLabs - Cloud API (requires API key)
 elevenlabs = [
-    "elevenlabs>=0.2.0,<3.0.0",
+    "elevenlabs>=1.0.0,<3.0.0",
 ]
 
-# Coqui TTS - Local TTS with voice cloning
-# Note: Has known dependency conflicts with newer torch/transformers
-# Works best with Python 3.11 and pinned versions below
+# Coqui TTS - Local with voice cloning
+# Note: dependency conflicts may occur with newer torch/transformers
 coqui = [
     "TTS>=0.22.0",
     "transformers",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
 ]
 
-# OpenAI TTS - Cloud API (requires API key, paid)
-# High quality, latest models
+# OpenAI TTS - Cloud API (requires API key)
 openai = [
     "openai>=1.0.0",
 ]
 
-# Bark - High quality local TTS
-# Slower but excellent voice quality
+# Bark - High quality local TTS (slow)
 bark = [
     "bark>=0.1.0",
     "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
 ]
 
 # All TTS providers
 all = [
-    "TTS>=0.22.0",
-    "transformers",
-    "elevenlabs>=1.0,<3.0.0",
     "piper-tts>=1.2.0",
+    "pathvalidate>=3.0.0",
+    "elevenlabs>=1.0.0,<3.0.0",
+    "TTS>=0.22.0",
+    "transformers>=4.30.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
     "openai>=1.0.0",
     "bark>=0.1.0",
 ]
@@ -106,17 +106,37 @@ version = {attr = "scholium.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["scholium*", "tts_providers*"]
+include = ["scholium*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers --disable-warnings"
+markers = [
+    "unit: Unit tests (no external dependencies)",
+    "integration: Integration tests (requires pandoc, ffmpeg)",
+    "slow: Slow running tests",
+    "requires_tts: Tests requiring TTS API keys",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
 
 [tool.black]
 line-length = 100
-target-version = ['py311']
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Main CLI for Scholium - automated instructional video generation."""
 
-import sys
 import click
 import shutil
 from pathlib import Path

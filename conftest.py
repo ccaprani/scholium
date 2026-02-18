@@ -5,6 +5,15 @@ import subprocess
 from pathlib import Path
 
 
+def _check_tool(name: str) -> bool:
+    """Return True if the named CLI tool is available on PATH."""
+    try:
+        subprocess.run([name, "--version"], capture_output=True, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line("markers", "unit: Unit tests (no external dependencies)")
@@ -22,55 +31,33 @@ def project_root():
 @pytest.fixture(scope="session")
 def test_data_dir(project_root):
     """Get test data directory."""
-    return project_root / "tests"
+    return project_root / "tests" / "data"
 
 
 @pytest.fixture(scope="session")
 def has_pandoc():
-    """Check if pandoc is available."""
-    try:
-        subprocess.run(["pandoc", "--version"], capture_output=True, check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    """Check if pandoc is available on PATH."""
+    return _check_tool("pandoc")
 
 
 @pytest.fixture(scope="session")
 def has_ffmpeg():
-    """Check if ffmpeg is available."""
-    try:
-        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    """Check if ffmpeg is available on PATH."""
+    return _check_tool("ffmpeg")
 
 
 @pytest.fixture(scope="session")
 def can_run_integration(has_pandoc, has_ffmpeg):
-    """Check if integration tests can run."""
+    """Check if integration tests can run (requires pandoc and ffmpeg)."""
     return has_pandoc and has_ffmpeg
 
 
 def pytest_collection_modifyitems(config, items):
-    """Modify test collection to skip integration tests if dependencies missing."""
-    skip_integration = pytest.mark.skip(reason="Integration test dependencies not available (pandoc/ffmpeg)")
-    
-    # Check for pandoc and ffmpeg
-    has_pandoc = True
-    has_ffmpeg = True
-    
-    try:
-        subprocess.run(["pandoc", "--version"], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        has_pandoc = False
-    
-    try:
-        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        has_ffmpeg = False
-    
-    can_run = has_pandoc and has_ffmpeg
-    
+    """Skip integration tests if pandoc or ffmpeg are unavailable."""
+    can_run = _check_tool("pandoc") and _check_tool("ffmpeg")
+    if can_run:
+        return
+    skip = pytest.mark.skip(reason="Integration tests require pandoc and ffmpeg")
     for item in items:
-        if "integration" in item.keywords and not can_run:
-            item.add_marker(skip_integration)
+        if "integration" in item.keywords:
+            item.add_marker(skip)
