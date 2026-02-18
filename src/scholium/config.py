@@ -1,4 +1,4 @@
-"""Configuration management for PDF Voiceover Video Generator."""
+"""Configuration management for Scholium - automated instructional video generation."""
 
 import os
 import yaml

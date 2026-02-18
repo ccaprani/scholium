@@ -1,9 +1,11 @@
 """
-Basic tests for Scholium.
+Unit tests for Scholium core modules.
 
-Run with: pytest tests/
+Run with: pytest test_core.py
+Run unit tests only: pytest -m unit test_core.py
 """
 
+import re
 import tempfile
 import shutil
 from pathlib import Path
@@ -11,15 +13,19 @@ import pytest
 
 from scholium.config import Config
 from scholium.voice_manager import VoiceManager
-from scholium.unified_parser import UnifiedParser, validate_slides
+from scholium.unified_parser import UnifiedParser, Slide, parse_time_spec, validate_slides
 
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestConfig:
     """Test configuration loading and management."""
 
     def test_default_config(self):
-        """Test default configuration values."""
+        """Default values are present when no config file exists."""
         cfg = Config(config_path="nonexistent.yaml")
 
         assert cfg.get("slide_marker") == "[NEXT]"
@@ -27,183 +33,345 @@ class TestConfig:
         assert cfg.get("fps") == 30
 
     def test_config_get_nested(self):
-        """Test nested configuration access."""
+        """Dot-notation access returns nested values."""
         cfg = Config(config_path="nonexistent.yaml")
 
-        # Nested access with dot notation
         model = cfg.get("elevenlabs.model")
         assert model is not None
 
-    def test_config_set(self):
-        """Test setting configuration values."""
+    def test_config_get_missing_returns_default(self):
+        """Missing key with explicit default returns that default."""
         cfg = Config(config_path="nonexistent.yaml")
+        assert cfg.get("totally_absent_key", "fallback") == "fallback"
 
+    def test_config_get_missing_returns_none(self):
+        """Missing key without default returns None."""
+        cfg = Config(config_path="nonexistent.yaml")
+        assert cfg.get("totally_absent_key") is None
+
+    def test_config_set_simple(self):
+        """Setting a top-level key is reflected in get."""
+        cfg = Config(config_path="nonexistent.yaml")
         cfg.set("custom_value", "test")
         assert cfg.get("custom_value") == "test"
 
+    def test_config_set_nested(self):
+        """Setting a nested key via dot notation works."""
+        cfg = Config(config_path="nonexistent.yaml")
+        cfg.set("piper.quality", "high")
+        assert cfg.get("piper.quality") == "high"
+
+    def test_ensure_dirs_creates_and_expands(self, tmp_path):
+        """ensure_dirs expands ~ and creates directories."""
+        cfg = Config(config_path="nonexistent.yaml")
+        cfg.set("voices_dir", str(tmp_path / "voices"))
+        cfg.set("temp_dir", str(tmp_path / "temp"))
+        cfg.ensure_dirs()
+
+        assert Path(cfg.get("voices_dir")).exists()
+        assert Path(cfg.get("temp_dir")).exists()
+
+
+# ---------------------------------------------------------------------------
+# parse_time_spec
+# ---------------------------------------------------------------------------
+
+@pytest.mark.unit
+class TestParseTimeSpec:
+    """Test the parse_time_spec helper."""
+
+    def test_seconds(self):
+        assert parse_time_spec("5s") == 5.0
+
+    def test_decimal_seconds(self):
+        assert parse_time_spec("2.5s") == 2.5
+
+    def test_milliseconds(self):
+        assert parse_time_spec("500ms") == 0.5
+
+    def test_no_unit_assumes_seconds(self):
+        assert parse_time_spec("3") == 3.0
+
+    def test_whitespace_stripped(self):
+        assert parse_time_spec("  4s  ") == 4.0
+
+
+# ---------------------------------------------------------------------------
+# UnifiedParser
+# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestUnifiedParser:
     """Test unified parser functionality."""
 
     @pytest.fixture
-    def test_dir(self):
-        """Provide test directory path."""
-        return Path(__file__).parent
+    def test_slides_path(self):
+        """Path to the bundled test slides file."""
+        return Path(__file__).parent / "test_slides.md"
 
-    @pytest.fixture
-    def test_slides_path(self, test_dir):
-        """Provide test slides path."""
-        return test_dir / "test_slides.md"
+    # --- frontmatter ---
 
-    def test_parse_slides_with_notes(self, test_slides_path):
-        """Test parsing markdown with embedded notes."""
-        if not test_slides_path.exists():
-            pytest.skip(f"Test file not found: {test_slides_path}")
-
+    def test_split_frontmatter_present(self):
+        """Frontmatter is parsed when present."""
         parser = UnifiedParser()
-        slides = parser.parse(str(test_slides_path))
+        content = "---\ntitle: Test\nslide-level: 2\n---\n# Slide\n"
+        fm, body = parser._split_frontmatter(content)
+        assert fm.get("title") == "Test"
+        assert fm.get("slide-level") == 2
+        assert "# Slide" in body
 
-        # Should have 3 slides (title + 2 content slides)
+    def test_split_frontmatter_absent(self):
+        """Missing frontmatter returns empty dict and full content."""
+        parser = UnifiedParser()
+        content = "# Just a slide\n\nSome content.\n"
+        fm, body = parser._split_frontmatter(content)
+        assert fm == {}
+        assert "# Just a slide" in body
+
+    # --- slide-level 1 (default) ---
+
+    def test_parse_slide_level_1(self):
+        """# headings create slides at default slide-level 1."""
+        parser = UnifiedParser()
+        md = "# Slide A\n\nContent A\n\n# Slide B\n\nContent B\n"
+        slides = parser._parse_body_slides(md, slide_level=1, start_index=0)
+        assert len(slides) == 2
+        assert "Slide A" in slides[0].markdown_content
+        assert "Slide B" in slides[1].markdown_content
+
+    # --- slide-level 2 ---
+
+    def test_parse_slide_level_2_sections(self):
+        """With slide-level 2, # is a section header and ## creates slides."""
+        parser = UnifiedParser()
+        md = "# Section One\n\n## Slide A\n\nContent A\n\n## Slide B\n\nContent B\n"
+        slides = parser._parse_body_slides(md, slide_level=2, start_index=0)
+        # Section heading + 2 content slides = 3
         assert len(slides) == 3
 
-        # Check title slide
-        assert slides[0].is_title_slide
-        assert slides[0].has_narration
+    def test_invalid_slide_level_raises(self):
+        """slide-level values other than 1 or 2 raise ValueError."""
+        parser = UnifiedParser()
+        import io, textwrap
+        md_file = Path(tempfile.mktemp(suffix=".md"))
+        md_file.write_text("---\nslide-level: 3\n---\n# Slide\n")
+        with pytest.raises(ValueError, match="slide-level"):
+            parser.parse(str(md_file))
+        md_file.unlink()
 
-        # Check regular slides have narration
-        assert slides[1].has_narration
-        assert slides[2].has_narration
+    # --- notes extraction ---
 
-    def test_parse_timing_directives(self, test_slides_path):
-        """Test that timing directives are extracted correctly."""
+    def test_extract_notes_block(self):
+        """Notes block is separated from slide content."""
+        parser = UnifiedParser()
+        slide_text = "# Title\n\nSlide body.\n\n::: notes\nNarration.\n:::\n"
+        content, notes = parser._extract_notes_block(slide_text)
+        assert "Narration." in notes
+        assert "::: notes" not in content
+
+    def test_extract_notes_block_absent(self):
+        """Slides without notes return empty notes string."""
+        parser = UnifiedParser()
+        slide_text = "# Title\n\nSlide body.\n"
+        content, notes = parser._extract_notes_block(slide_text)
+        assert notes == ""
+        assert "Slide body." in content
+
+    # --- timing directives ---
+
+    def test_timing_directives_extracted(self, test_slides_path):
+        """Timing directives are removed from narration and stored on slide."""
         if not test_slides_path.exists():
             pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
         slides = parser.parse(str(test_slides_path))
 
-        # Second slide should have min_duration
+        # Second slide should have min_duration from [MIN 12s]
         assert slides[1].min_duration == 12.0
 
-        # Third slide should have pre_delay
+    def test_pre_delay_extracted(self, test_slides_path):
+        """[PRE] directive sets pre_delay on slide."""
+        if not test_slides_path.exists():
+            pytest.skip(f"Test file not found: {test_slides_path}")
+
+        parser = UnifiedParser()
+        slides = parser.parse(str(test_slides_path))
         assert slides[2].pre_delay == 1.0
 
-    def test_parse_metadata(self, test_slides_path):
-        """Test that metadata is extracted correctly."""
+    def test_timing_directives_not_in_narration(self):
+        """DUR/PRE/POST/MIN directives are stripped from narration text."""
+        parser = UnifiedParser()
+        text = "[PRE 2s] [POST 3s] Hello world."
+        metadata = {}
+        clean = parser._extract_timing_directives(text, metadata)
+        assert "[PRE" not in clean
+        assert "[POST" not in clean
+        assert "Hello world." in clean
+        assert metadata["pre_delay"] == 2.0
+        assert metadata["post_delay"] == 3.0
+
+    # --- [PAUSE] directives ---
+
+    def test_pause_becomes_silent_segment(self):
+        """[PAUSE Xs] in narration becomes a [SILENT Xs] segment."""
+        parser = UnifiedParser()
+        segments = parser._split_on_pause_directives("Before. [PAUSE 2s] After.")
+        assert len(segments) == 3
+        assert segments[0] == "Before."
+        assert segments[1] == "[SILENT 2s]"
+        assert segments[2] == "After."
+
+    def test_pause_at_start(self):
+        """[PAUSE] at the start creates a leading silent segment."""
+        parser = UnifiedParser()
+        segments = parser._split_on_pause_directives("[PAUSE 1s] Then text.")
+        assert segments[0] == "[SILENT 1s]"
+        assert segments[1] == "Then text."
+
+    def test_no_pause_returns_single_segment(self):
+        """Text without [PAUSE] returns a single segment."""
+        parser = UnifiedParser()
+        segments = parser._split_on_pause_directives("Simple narration.")
+        assert segments == ["Simple narration."]
+
+    # --- incremental reveals ---
+
+    def test_incremental_slide_detection(self):
+        """Slides with >- bullets are detected as incremental."""
+        slide = Slide(
+            index=0,
+            markdown_content="# Title\n>- Bullet one\n>- Bullet two\n",
+            narration_segments=["One.", "Two."],
+        )
+        assert slide.is_incremental is True
+
+    def test_non_incremental_slide(self):
+        """Slides without >- are not incremental."""
+        slide = Slide(
+            index=0,
+            markdown_content="# Title\n- Bullet one\n",
+            narration_segments=["One."],
+        )
+        assert slide.is_incremental is False
+
+    def test_incremental_narration_split(self):
+        """Two-bullet slide with two paragraphs produces two segments."""
+        parser = UnifiedParser()
+        slide_content = "# Title\n>- Bullet A\n>- Bullet B\n"
+        text = "Narration for A.\n\nNarration for B."
+        segments = parser._split_narration_segments(text, slide_content)
+        assert len(segments) == 2
+        assert segments[0] == "Narration for A."
+        assert segments[1] == "Narration for B."
+
+    # --- metadata ---
+
+    def test_metadata_extracted(self, test_slides_path):
+        """:: prefix lines set metadata on slide without appearing in narration."""
         if not test_slides_path.exists():
             pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
         slides = parser.parse(str(test_slides_path))
 
-        # Second slide should have metadata
         assert "reference" in slides[1].metadata
         assert "author" in slides[1].metadata
 
-    def test_narration_split_on_pause(self, test_slides_path):
-        """Test that narration with [PAUSE] is split into multiple segments."""
+    # --- title slide ---
+
+    def test_title_slide_from_frontmatter(self, test_slides_path):
+        """title_notes in YAML frontmatter produces a title slide."""
         if not test_slides_path.exists():
             pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
         slides = parser.parse(str(test_slides_path))
 
-        # Slides with [PAUSE] directives will have multiple segments
-        # Check that we get the expected structure
-        for slide in slides:
-            if slide.has_narration:
-                assert len(slide.narration_segments) >= 1
-                # All segments should be non-empty or will be handled as silent
-                for seg in slide.narration_segments:
-                    assert isinstance(seg, str)
+        assert slides[0].is_title_slide is True
+        assert slides[0].has_narration is True
 
-    def test_pause_directives_preserved(self, test_slides_path):
-        """Test that [PAUSE] directives are preserved as separate segments."""
+    # --- has_narration ---
+
+    def test_has_narration_true(self):
+        """Slide with non-empty segments reports has_narration = True."""
+        slide = Slide(index=0, markdown_content="", narration_segments=["Hello."])
+        assert slide.has_narration is True
+
+    def test_has_narration_empty_segments(self):
+        """Slide with only blank segments reports has_narration = False."""
+        slide = Slide(index=0, markdown_content="", narration_segments=["", "  "])
+        assert slide.has_narration is False
+
+    def test_has_narration_no_segments(self):
+        """Slide with no segments reports has_narration = False."""
+        slide = Slide(index=0, markdown_content="", narration_segments=[])
+        assert slide.has_narration is False
+
+    # --- full parse ---
+
+    def test_parse_count(self, test_slides_path):
+        """Test file produces expected number of slides (title + 2 content)."""
         if not test_slides_path.exists():
             pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
         slides = parser.parse(str(test_slides_path))
+        assert len(slides) == 3
 
-        # Find slides with PAUSE directives
-        pause_found = False
-        for slide in slides:
-            for narration in slide.narration_segments:
-                if narration.strip().startswith("[PAUSE"):
-                    pause_found = True
-                    # Verify it's a valid pause marker
-                    assert narration.strip().startswith("[PAUSE")
-                    assert narration.strip().endswith("]")
-                    # Verify it has a duration
-                    import re
+    def test_parse_missing_file_raises(self):
+        """Parsing a non-existent file raises FileNotFoundError."""
+        parser = UnifiedParser()
+        with pytest.raises(FileNotFoundError):
+            parser.parse("/nonexistent/path/to/slides.md")
 
-                    match = re.match(r"\[PAUSE\s+([\d.]+)s?\]", narration.strip(), re.IGNORECASE)
-                    assert match is not None, f"Invalid PAUSE format: {narration}"
 
-        # If no pauses found, that's okay (depends on test file content)
-        # But if found, they should be in correct format
+# ---------------------------------------------------------------------------
+# validate_slides
+# ---------------------------------------------------------------------------
 
-    def test_validate_slides(self, test_slides_path):
-        """Test slide validation."""
+@pytest.mark.unit
+class TestValidateSlides:
+    """Test validate_slides utility."""
+
+    @pytest.fixture
+    def test_slides_path(self):
+        return Path(__file__).parent / "test_slides.md"
+
+    def test_no_warnings_when_counts_match(self, test_slides_path):
+        """No warnings when PDF pages match slide count."""
         if not test_slides_path.exists():
             pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
         slides = parser.parse(str(test_slides_path))
-
-        # Validate against expected PDF page count (3 slides = 3 pages)
         warnings = validate_slides(slides, 3)
-
-        # Should have no warnings when counts match
         assert len(warnings) == 0
 
-    def test_validate_page_mismatch(self, test_slides_path):
-        """Test validation warns about page/slide mismatch."""
+    def test_warns_on_page_mismatch(self, test_slides_path):
+        """Warning generated when PDF page count does not match expected."""
         if not test_slides_path.exists():
             pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
         slides = parser.parse(str(test_slides_path))
-
-        # Validate against wrong page count
         warnings = validate_slides(slides, 5)
+        assert any("pages" in w.lower() or "pages" in w for w in warnings)
 
-        # Should have warnings about mismatch
-        assert len(warnings) > 0
+    def test_warns_incremental_mismatch(self):
+        """Warning generated when bullet count != narration segment count."""
+        slide = Slide(
+            index=1,
+            markdown_content="# Title\n>- A\n>- B\n>- C\n",
+            narration_segments=["One.", "Two."],  # 3 bullets but 2 segments
+        )
+        warnings = validate_slides([slide], num_pdf_pages=3)
+        assert any("3" in w and "2" in w for w in warnings)
 
-    def test_segment_creation(self, test_slides_path):
-        """Test creating segments for video generation."""
-        if not test_slides_path.exists():
-            pytest.skip(f"Test file not found: {test_slides_path}")
 
-        parser = UnifiedParser()
-        slides = parser.parse(str(test_slides_path))
-
-        # Create segments as done in main.py
-        segments = []
-        for slide in slides:
-            if slide.narration_segments:
-                narration_text = slide.narration_segments[0]
-            else:
-                narration_text = ""
-
-            segment = {
-                "text": narration_text,
-                "slide_number": slide.index + 1,
-                "min_duration": slide.min_duration,
-                "pre_delay": slide.pre_delay,
-                "post_delay": slide.post_delay,
-            }
-            segments.append(segment)
-
-        # Should have 3 segments
-        assert len(segments) == 3
-
-        # Check timing is preserved
-        assert segments[1]["min_duration"] == 12.0
-        assert segments[2]["pre_delay"] == 1.0
-
+# ---------------------------------------------------------------------------
+# VoiceManager
+# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
 class TestVoiceManager:
@@ -211,110 +379,168 @@ class TestVoiceManager:
 
     @pytest.fixture
     def temp_dir(self):
-        """Create temporary directory for tests."""
+        """Temporary directory removed after test."""
         temp = tempfile.mkdtemp()
         yield temp
         shutil.rmtree(temp, ignore_errors=True)
 
     @pytest.fixture
     def voice_manager(self, temp_dir):
-        """Create voice manager with temporary directory."""
         return VoiceManager(temp_dir)
 
     def test_create_elevenlabs_voice(self, voice_manager):
-        """Test creating an ElevenLabs voice."""
+        """ElevenLabs voice is created and directory exists."""
         voice_dir = voice_manager.create_voice(
             voice_name="test_voice",
             provider="elevenlabs",
             voice_id="test123",
             description="Test voice",
         )
-
         assert Path(voice_dir).exists()
         assert voice_manager.voice_exists("test_voice")
 
+    def test_create_coqui_voice(self, voice_manager, tmp_path):
+        """Coqui voice is created with model_path."""
+        voice_dir = voice_manager.create_voice(
+            voice_name="coqui_voice",
+            provider="coqui",
+            model_path="sample.wav",
+            description="Coqui test voice",
+        )
+        assert Path(voice_dir).exists()
+        assert voice_manager.voice_exists("coqui_voice")
+
+    def test_create_voice_missing_voice_id_raises(self, voice_manager):
+        """ElevenLabs voice without voice_id raises ValueError."""
+        with pytest.raises(ValueError, match="voice_id"):
+            voice_manager.create_voice(voice_name="bad", provider="elevenlabs")
+
+    def test_create_voice_missing_model_path_raises(self, voice_manager):
+        """Coqui voice without model_path raises ValueError."""
+        with pytest.raises(ValueError, match="model_path"):
+            voice_manager.create_voice(voice_name="bad", provider="coqui")
+
+    def test_create_voice_unknown_provider_raises(self, voice_manager):
+        """Unknown provider raises ValueError."""
+        with pytest.raises(ValueError, match="Unknown provider"):
+            voice_manager.create_voice(
+                voice_name="bad", provider="fakeprovider", voice_id="x"
+            )
+
     def test_list_voices(self, voice_manager):
-        """Test listing voices."""
-        # Create two test voices
+        """list_voices returns all created voice names."""
         voice_manager.create_voice(voice_name="voice1", provider="elevenlabs", voice_id="id1")
         voice_manager.create_voice(voice_name="voice2", provider="elevenlabs", voice_id="id2")
-
         voices = voice_manager.list_voices()
-        assert len(voices) == 2
-        assert "voice1" in voices
-        assert "voice2" in voices
+        assert sorted(voices) == ["voice1", "voice2"]
+
+    def test_list_voices_empty(self, voice_manager):
+        """list_voices returns empty list when no voices exist."""
+        assert voice_manager.list_voices() == []
 
     def test_get_voice_metadata(self, voice_manager):
-        """Test retrieving voice metadata."""
+        """Metadata round-trips correctly."""
         voice_manager.create_voice(
             voice_name="test_voice",
             provider="elevenlabs",
             voice_id="abc123",
             description="Test description",
         )
-
         metadata = voice_manager.get_voice_metadata("test_voice")
-
         assert metadata["name"] == "test_voice"
         assert metadata["provider"] == "elevenlabs"
         assert metadata["voice_id"] == "abc123"
         assert metadata["description"] == "Test description"
 
+    def test_get_voice_metadata_missing_raises(self, voice_manager):
+        """get_voice_metadata raises FileNotFoundError for absent voice."""
+        with pytest.raises(FileNotFoundError):
+            voice_manager.get_voice_metadata("does_not_exist")
+
     def test_load_voice(self, voice_manager):
-        """Test loading voice configuration."""
+        """load_voice returns metadata dict for correct provider."""
         voice_manager.create_voice(
             voice_name="test_voice", provider="elevenlabs", voice_id="xyz789"
         )
-
         voice_config = voice_manager.load_voice("test_voice", "elevenlabs")
-
         assert voice_config["voice_id"] == "xyz789"
 
-    def test_provider_mismatch(self, voice_manager):
-        """Test error when requesting wrong provider."""
+    def test_provider_mismatch_raises(self, voice_manager):
+        """load_voice raises ValueError if requested provider doesn't match."""
         voice_manager.create_voice(
             voice_name="test_voice", provider="elevenlabs", voice_id="abc123"
         )
-
         with pytest.raises(ValueError):
             voice_manager.load_voice("test_voice", "coqui")
 
+    def test_voice_exists_true(self, voice_manager):
+        """voice_exists returns True for created voice."""
+        voice_manager.create_voice(voice_name="v", provider="elevenlabs", voice_id="id")
+        assert voice_manager.voice_exists("v") is True
+
+    def test_voice_exists_false(self, voice_manager):
+        """voice_exists returns False for absent voice."""
+        assert voice_manager.voice_exists("missing") is False
+
+
+# ---------------------------------------------------------------------------
+# Integration (no external tools required)
+# ---------------------------------------------------------------------------
 
 @pytest.mark.unit
-class TestIntegration:
-    """Integration tests for complete workflow (without TTS/video generation)."""
+class TestParserSegmentStructure:
+    """Verify that parser output matches the structure expected by TTSEngine."""
 
     @pytest.fixture
-    def test_dir(self):
-        """Provide test directory path."""
-        return Path(__file__).parent
+    def test_slides_path(self):
+        return Path(__file__).parent / "test_slides.md"
 
-    def test_parser_output_structure(self, test_dir):
-        """Test that parser output has correct structure for downstream components."""
-        test_slides = test_dir / "test_slides.md"
-
-        if not test_slides.exists():
-            pytest.skip(f"Test file not found: {test_slides}")
+    def test_segment_fields_present(self, test_slides_path):
+        """All required segment fields are present after pipeline assembly."""
+        if not test_slides_path.exists():
+            pytest.skip(f"Test file not found: {test_slides_path}")
 
         parser = UnifiedParser()
-        slides = parser.parse(str(test_slides))
+        slides = parser.parse(str(test_slides_path))
 
-        # Create segments as main.py would
         segments = []
         for slide in slides:
             narration_text = slide.narration_segments[0] if slide.narration_segments else ""
             segment = {
                 "text": narration_text,
                 "slide_number": slide.index + 1,
+                "fixed_duration": slide.fixed_duration,
                 "min_duration": slide.min_duration,
                 "pre_delay": slide.pre_delay,
                 "post_delay": slide.post_delay,
             }
             segments.append(segment)
 
-        # Verify structure matches what TTS engine expects
-        for segment in segments:
+        for i, segment in enumerate(segments):
             assert "text" in segment
             assert "slide_number" in segment
             assert isinstance(segment["slide_number"], int)
             assert segment["slide_number"] > 0
+
+    def test_timing_values_preserved(self, test_slides_path):
+        """Timing values from the test file are preserved in segments."""
+        if not test_slides_path.exists():
+            pytest.skip(f"Test file not found: {test_slides_path}")
+
+        parser = UnifiedParser()
+        slides = parser.parse(str(test_slides_path))
+        segments = [
+            {
+                "text": s.narration_segments[0] if s.narration_segments else "",
+                "slide_number": s.index + 1,
+                "fixed_duration": s.fixed_duration,
+                "min_duration": s.min_duration,
+                "pre_delay": s.pre_delay,
+                "post_delay": s.post_delay,
+            }
+            for s in slides
+        ]
+
+        assert segments[0]["fixed_duration"] == 3.0
+        assert segments[1]["min_duration"] == 12.0
+        assert segments[2]["pre_delay"] == 1.0

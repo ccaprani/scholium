@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Main CLI for PDF Voiceover Video Generator."""
+"""Main CLI for Scholium - automated instructional video generation."""
 
 import sys
 import click
 import shutil
 from pathlib import Path
 from tqdm import tqdm
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scholium.config import Config
 from scholium.slide_processor import SlideProcessor
@@ -39,7 +36,6 @@ def train_voice(name, provider, sample, description, language, config):
     Example:
         scholium train-voice --name my_voice --sample audio.wav
     """
-    from scholium.voice_manager import VoiceManager
 
     # Load config to get voices_dir
     cfg = Config(config)
@@ -130,7 +126,6 @@ def regenerate_embeddings(voice, config):
     Example:
         scholium regenerate-embeddings --voice my_voice
     """
-    from scholium.voice_manager import VoiceManager
 
     cfg = Config(config)
     cfg.ensure_dirs()
@@ -453,7 +448,6 @@ def provider_info(provider_name):
 @click.option("--config", default="config.yaml", help="Path to config file")
 def list_voices(config):
     """List all available voices."""
-    from scholium.voice_manager import VoiceManager
 
     # Load config to get voices_dir
     cfg = Config(config)
@@ -715,7 +709,7 @@ def generate(
 
         # Some providers (Piper, OpenAI, Bark) use their own voice names
         # Others (Coqui, ElevenLabs) use the voice library
-        providers_using_voice_library = ["coqui"]  # , 'elevenlabs']
+        providers_using_voice_library = ["coqui"]
 
         if provider_name.lower() in providers_using_voice_library:
             # Check voice library

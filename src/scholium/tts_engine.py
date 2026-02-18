@@ -164,32 +164,33 @@ class TTSEngine:
         output_dir: str,
         progress_callback=None,
     ) -> List[Dict[str, Any]]:
-        """Generate audio for multiple transcript segments.
+        """Generate audio for multiple narration segments.
 
         Args:
-            segments: List of transcript segments from TranscriptParser
-                (SlideSegment objects).
-            voice_config: Voice configuration.
-            output_dir: Directory to save audio files.
+            segments: List of segment dicts, each containing at least:
+                ``text`` (str), ``slide_number`` (int), and optionally
+                ``min_duration``, ``pre_delay``, ``post_delay``,
+                ``fixed_duration``.
+            voice_config: Voice configuration passed to the TTS provider.
+            output_dir: Directory where individual audio files are saved.
+            progress_callback: Optional zero-argument callable invoked after
+                each segment is processed (useful for progress bars).
 
         Returns:
-            list[dict]: List of segments with audio paths and durations.
+            list[dict]: List of enriched segment dicts, each containing all
+            original keys plus:
 
-                Example::
+                .. code-block:: python
 
-                    [
-                        {
-                            "text": "...",
-                            "slide_number": 1,
-                            "audio_path": "/path/to/audio_0000.mp3",
-                            "duration": 5.2,
-                            "fixed_duration": 5.0,  # If specified
-                            "min_duration": 10.0,   # If specified
-                            "pre_delay": 2.0,       # If specified
-                            "post_delay": 3.0       # If specified
-                        },
-                        ...
-                    ]
+                    {
+                        "audio_path": "/path/to/audio_0000.mp3",
+                        "audio_duration": 5.2,
+                        "duration": 7.2,        # includes pre/post delays
+                        "fixed_duration": None,  # if specified
+                        "min_duration": 10.0,   # if specified
+                        "pre_delay": 1.0,
+                        "post_delay": 1.0,
+                    }
         """
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
