@@ -13,13 +13,26 @@ Scholium now uses a **configurable voice storage system** that allows you to cho
 ├── piper/              # Piper voice models (auto-downloaded)
 │   ├── en_US-lessac-medium.onnx
 │   ├── en_US-lessac-medium.onnx.json
-│   ├── en_US-amy-medium.onnx
 │   └── ...
-└── coqui/             # Coqui trained voices
-    ├── my_voice/
-    │   ├── metadata.yaml
-    │   └── sample.wav
-    └── ...
+├── coqui/             # Coqui trained voices
+│   └── my_voice/
+│       ├── metadata.yaml
+│       └── sample.wav
+├── f5tts/             # F5-TTS voice samples
+│   └── my_voice/
+│       ├── metadata.yaml
+│       ├── sample.wav
+│       └── ref_text.txt   # optional transcript of sample.wav
+├── styletts2/         # StyleTTS2 voice samples
+│   └── my_voice/
+│       ├── metadata.yaml
+│       └── sample.wav
+└── tortoise/          # Tortoise TTS voice samples
+    └── my_voice/
+        ├── metadata.yaml
+        ├── sample.wav
+        ├── sample_2.wav   # extra clips improve cloning quality
+        └── sample_3.wav
 ```
 
 ### Benefits
@@ -102,10 +115,11 @@ Each provider gets its own subdirectory:
 
 ```
 {voices_dir}/
-├── piper/          # Piper voice models
-├── coqui/          # Coqui trained voices
-├── elevenlabs/     # ElevenLabs voice cache (future)
-└── custom/         # Custom voice profiles (future)
+├── piper/       # Piper voice models (auto-downloaded)
+├── coqui/       # Coqui trained voices
+├── f5tts/       # F5-TTS voice samples
+├── styletts2/   # StyleTTS2 voice samples
+└── tortoise/    # Tortoise TTS voice samples
 ```
 
 ### Auto-Creation
@@ -140,22 +154,80 @@ scholium generate slides.md transcript.txt output.mp4 --provider piper --voice e
 
 ### Coqui
 
-**Stores:** Trained voice profiles  
-**Auto-downloads:** No, you train voices  
-**Location:** `{voices_dir}/coqui/`  
+**Stores:** Reference audio + optional pre-computed speaker embeddings
+**Auto-downloads:** No, you register voices
+**Location:** `{voices_dir}/coqui/`
 
 ```bash
-# Train a voice
 scholium train-voice --name my_voice --provider coqui --sample audio.wav
-# Saves to: ~/.local/share/scholium/voices/coqui/my_voice/
+scholium generate slides.md output.mp4 --provider coqui --voice my_voice
+```
 
-# Use it
-scholium generate slides.md transcript.txt output.mp4 --provider coqui --voice my_voice
+### F5-TTS
+
+**Stores:** Reference audio sample + optional transcript sidecar
+**Auto-downloads:** No, you register voices
+**Location:** `{voices_dir}/f5tts/`
+
+```bash
+scholium train-voice --name my_voice --provider f5tts --sample audio.wav
+# Optionally add a transcript for better accuracy:
+echo "Exact words spoken in audio.wav" > ~/.local/share/scholium/voices/f5tts/my_voice/ref_text.txt
+
+scholium generate slides.md output.mp4 --provider f5tts --voice my_voice
+```
+
+**Shortcut — skip registration entirely** by pointing to the file in `config.yaml`:
+
+```yaml
+f5tts:
+  model_path: "f5tts/my_voice/sample.wav"   # relative to voices_dir
+  ref_text: "Exact words spoken in the clip."
+```
+
+### StyleTTS2
+
+**Stores:** Reference audio sample
+**Auto-downloads:** No, you register voices
+**Location:** `{voices_dir}/styletts2/`
+
+```bash
+scholium train-voice --name my_voice --provider styletts2 --sample audio.wav
+scholium generate slides.md output.mp4 --provider styletts2 --voice my_voice
+```
+
+**Shortcut — skip registration entirely** by pointing to the file in `config.yaml`:
+
+```yaml
+styletts2:
+  model_path: "styletts2/my_voice/sample.wav"   # relative to voices_dir
+```
+
+### Tortoise
+
+**Stores:** One or more reference audio clips
+**Auto-downloads:** No, you register voices
+**Location:** `{voices_dir}/tortoise/`
+
+```bash
+scholium train-voice --name my_voice --provider tortoise --sample audio.wav
+# Add extra clips for better quality (all .wav files in the directory are used):
+cp clip2.wav ~/.local/share/scholium/voices/tortoise/my_voice/sample_2.wav
+
+scholium generate slides.md output.mp4 --provider tortoise --voice my_voice
+```
+
+**Shortcut — skip registration entirely** by pointing to the file in `config.yaml`:
+
+```yaml
+tortoise:
+  model_path: "tortoise/my_voice/sample.wav"   # relative to voices_dir
+  # All .wav files in the same directory will be used as conditioning clips
 ```
 
 ### ElevenLabs / OpenAI / Bark
 
-These providers don't store local voice files (cloud-based or built-in voices), so they don't use the voices_dir.
+These providers use cloud-based or built-in voices and do not store local voice files.  `voices_dir` is not used by these providers.
 
 ## Migration from Old System
 
@@ -242,7 +314,8 @@ chmod -R u+w ~/.local/share/scholium/voices/
 
 Voice models can be large:
 - Piper voice: ~50-100 MB each
-- Coqui trained voice: ~1-5 MB each
+- Coqui trained voice: ~1-5 MB each (plus optional pre-computed embeddings)
+- F5-TTS / StyleTTS2 / Tortoise voice samples: typically a few MB each
 
 Check space:
 ```bash
@@ -267,5 +340,6 @@ voices_dir: "/path/to/new/location"
 - ✅ **Backward compatible:** Old `./voices/` still works
 - ✅ **Auto-downloads:** Piper voices download automatically
 - ✅ **Organized:** Each provider has its own subdirectory
+- ✅ **Two usage modes for zero-shot providers:** register via `scholium train-voice`, or point directly to a reference file with `model_path` in `config.yaml`
 
 This system gives you flexibility while providing sensible defaults!

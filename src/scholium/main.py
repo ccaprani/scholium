@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Main CLI for Scholium - automated instructional video generation."""
 
+import sys
 import click
 import shutil
 from pathlib import Path
@@ -43,7 +44,7 @@ def train_voice(name, provider, sample, description, language, config):
     voice_manager = VoiceManager(cfg.get("voices_dir"))
     sample_path = Path(sample).resolve()
 
-    click.echo(f"ðŸŽ¤ Training {provider} voice '{name}' from {sample_path.name}")
+    click.echo(f"Ã°Å¸Å½Â¤ Training {provider} voice '{name}' from {sample_path.name}")
     click.echo(f"   Voices directory: {cfg.get('voices_dir')}")
     click.echo("   This may take a few minutes...")
 
@@ -65,7 +66,7 @@ def train_voice(name, provider, sample, description, language, config):
         dest_sample = voice_dir_path / "sample.wav"
         shutil.copy2(sample_path, dest_sample)
 
-        click.echo(f"   Ã¢Å“â€œ Copied sample to {dest_sample}")
+        click.echo(f"   ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Copied sample to {dest_sample}")
 
         # Pre-compute and save speaker embeddings for faster generation
         click.echo(f"   Computing speaker embeddings (this speeds up future generations)...")
@@ -93,22 +94,78 @@ def train_voice(name, provider, sample, description, language, config):
                     embeddings_path,
                 )
 
-                click.echo(f"   ✓ Speaker embeddings saved to {embeddings_path}")
+                click.echo(f"   âœ“ Speaker embeddings saved to {embeddings_path}")
             else:
-                click.echo(f"   ⚠️  Model doesn't support embedding pre-computation")
+                click.echo(f"   âš ï¸  Model doesn't support embedding pre-computation")
                 click.echo(f"   Embeddings will be computed on each use")
 
         except Exception as e:
-            click.echo(f"   ⚠️  Could not pre-compute embeddings: {e}")
+            click.echo(f"   âš ï¸  Could not pre-compute embeddings: {e}")
             click.echo(f"   Embeddings will be computed on first use instead")
 
-        click.echo(f"✅ Coqui voice '{name}' created successfully!")
+        click.echo(f"âœ… Coqui voice '{name}' created successfully!")
         click.echo(f"   Voice directory: {voice_dir}")
         click.echo(f"   Sample audio: {dest_sample}")
         click.echo(f"   Coqui XTTS will use this sample for zero-shot voice cloning.")
         click.echo(f"   The longer/clearer your sample, the better the results.")
         click.echo(f"\nYou can now use this voice with:")
         click.echo(f"   scholium generate slides.md transcript.txt output.mp4 --voice {name}")
+
+    elif provider.lower() == "f5tts":
+        # F5-TTS: store sample + optional ref_text transcript
+        voice_dir = voice_manager.create_voice(
+            voice_name=name,
+            provider=provider,
+            model_path="sample.wav",
+            description=description or f"F5-TTS voice cloned from {sample_path.name}",
+            language=language,
+        )
+        voice_dir_path = Path(voice_dir)
+        dest_sample = voice_dir_path / "sample.wav"
+        shutil.copy2(sample_path, dest_sample)
+        click.echo(f"   ✔ Copied sample to {dest_sample}")
+        click.echo(f"✅ F5-TTS voice '{name}' created successfully!")
+        click.echo(f"   For best results, also create a ref_text.txt in {voice_dir_path}")
+        click.echo(f"   containing a transcript of the reference audio.")
+        click.echo(f"\nYou can now use this voice with:")
+        click.echo(f"   scholium generate slides.md output.mp4 --provider f5tts --voice {name}")
+
+    elif provider.lower() == "styletts2":
+        # StyleTTS2: store reference sample
+        voice_dir = voice_manager.create_voice(
+            voice_name=name,
+            provider=provider,
+            model_path="sample.wav",
+            description=description or f"StyleTTS2 voice cloned from {sample_path.name}",
+            language=language,
+        )
+        voice_dir_path = Path(voice_dir)
+        dest_sample = voice_dir_path / "sample.wav"
+        shutil.copy2(sample_path, dest_sample)
+        click.echo(f"   ✔ Copied sample to {dest_sample}")
+        click.echo(f"✅ StyleTTS2 voice '{name}' created successfully!")
+        click.echo(f"\nYou can now use this voice with:")
+        click.echo(f"   scholium generate slides.md output.mp4 --provider styletts2 --voice {name}")
+
+    elif provider.lower() == "tortoise":
+        # Tortoise: store reference sample(s) in voice directory
+        # Multiple clips can be added manually for better cloning quality
+        voice_dir = voice_manager.create_voice(
+            voice_name=name,
+            provider=provider,
+            model_path="sample.wav",
+            description=description or f"Tortoise voice cloned from {sample_path.name}",
+            language=language,
+        )
+        voice_dir_path = Path(voice_dir)
+        dest_sample = voice_dir_path / "sample.wav"
+        shutil.copy2(sample_path, dest_sample)
+        click.echo(f"   ✔ Copied sample to {dest_sample}")
+        click.echo(f"✅ Tortoise voice '{name}' created successfully!")
+        click.echo(f"   Tip: Add more short clips (sample_2.wav, sample_3.wav …) to")
+        click.echo(f"   {voice_dir_path} for better voice cloning quality.")
+        click.echo(f"\nYou can now use this voice with:")
+        click.echo(f"   scholium generate slides.md output.mp4 --provider tortoise --voice {name}")
 
     else:
         raise click.ClickException(f"Voice training not supported for provider: {provider}")
@@ -145,7 +202,7 @@ def regenerate_embeddings(voice, config):
     if not sample_path.exists():
         raise click.ClickException(f"Sample audio not found: {sample_path}")
 
-    click.echo(f"Ã°Å¸â€â€ž Regenerating embeddings for voice '{voice}'...")
+    click.echo(f"ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Å¾ Regenerating embeddings for voice '{voice}'...")
     click.echo(f"   Voice directory: {voice_dir}")
     click.echo(f"   Sample: {sample_path}")
 
@@ -175,8 +232,8 @@ def regenerate_embeddings(voice, config):
             embeddings_path,
         )
 
-        click.echo(f"   Ã¢Å“â€œ Embeddings saved to: {embeddings_path}")
-        click.echo(f"âœ… Embeddings regenerated successfully!")
+        click.echo(f"   ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Embeddings saved to: {embeddings_path}")
+        click.echo(f"Ã¢Å“â€¦ Embeddings regenerated successfully!")
         click.echo(f"\nThis voice will now generate audio much faster!")
 
     except Exception as e:
@@ -240,9 +297,38 @@ def list_providers():
             "supports_voice_cloning": False,
             "install": "pip install scholium[bark]",
         },
+        "f5tts": {
+            "name": "F5-TTS",
+            "type": "local",
+            "quality": "very high",
+            "speed": "fast",
+            "requires_api_key": False,
+            "supports_voice_cloning": True,
+            "install": "pip install scholium[f5tts]",
+        },
+        "styletts2": {
+            "name": "StyleTTS2",
+            "type": "local",
+            "quality": "very high",
+            "speed": "medium",
+            "requires_api_key": False,
+            "supports_voice_cloning": True,
+            "install": "pip install scholium[styletts2]",
+            "notes": "Uses unofficial pip wrapper. Source: https://github.com/yl4579/StyleTTS2",
+        },
+        "tortoise": {
+            "name": "Tortoise TTS",
+            "type": "local",
+            "quality": "very high",
+            "speed": "slow",
+            "requires_api_key": False,
+            "supports_voice_cloning": True,
+            "install": "pip install scholium[tortoise]",
+            "notes": "Better quality with multiple short reference clips in voice directory.",
+        },
     }
 
-    click.echo("\n📊 TTS Providers:\n")
+    click.echo("\nðŸ“Š TTS Providers:\n")
 
     installed_count = 0
     for provider_name, info in provider_info.items():
@@ -268,13 +354,25 @@ def list_providers():
                 import bark
 
                 installed = True
+            elif provider_name == "f5tts":
+                import f5_tts
+
+                installed = True
+            elif provider_name == "styletts2":
+                import styletts2
+
+                installed = True
+            elif provider_name == "tortoise":
+                import tortoise
+
+                installed = True
             else:
                 installed = False
         except ImportError:
             installed = False
 
         if installed:
-            click.echo(f"  Ã¢Å“â€œ {provider_name:12s} - INSTALLED")
+            click.echo(f"  ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ {provider_name:12s} - INSTALLED")
             click.echo(f"      Type: {info['type']}")
             click.echo(f"      Quality: {info['quality']}")
             click.echo(f"      Speed: {info['speed']}")
@@ -286,7 +384,7 @@ def list_providers():
                 click.echo(f"      Notes: {info['notes']}")
             installed_count += 1
         else:
-            click.echo(f"  Ã¢Å“â€” {provider_name:12s} - NOT INSTALLED")
+            click.echo(f"  ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ {provider_name:12s} - NOT INSTALLED")
             click.echo(f"      Install with: {info['install']}")
 
         click.echo()
@@ -369,10 +467,45 @@ def provider_info(provider_name):
             "description": "Local TTS with very natural sounding voices. Slow but highest quality.",
             "notes": "Resource intensive, slow generation. Best for small batches.",
         },
+        "f5tts": {
+            "name": "F5-TTS",
+            "type": "local",
+            "quality": "very high",
+            "speed": "fast",
+            "requires_api_key": False,
+            "supports_voice_cloning": True,
+            "install": "pip install scholium[f5tts]",
+            "description": "Fast local voice cloning from a short reference clip (5-15s). No training required.",
+            "train": "scholium train-voice --name my_voice --provider f5tts --sample audio.wav",
+        },
+        "styletts2": {
+            "name": "StyleTTS2",
+            "type": "local",
+            "quality": "very high",
+            "speed": "medium",
+            "requires_api_key": False,
+            "supports_voice_cloning": True,
+            "install": "pip install scholium[styletts2]",
+            "description": "Expressive local voice cloning with diffusion. Very natural prosody.",
+            "notes": "Uses unofficial pip wrapper. Source install: https://github.com/yl4579/StyleTTS2",
+            "train": "scholium train-voice --name my_voice --provider styletts2 --sample audio.wav",
+        },
+        "tortoise": {
+            "name": "Tortoise TTS",
+            "type": "local",
+            "quality": "very high",
+            "speed": "slow",
+            "requires_api_key": False,
+            "supports_voice_cloning": True,
+            "install": "pip install scholium[tortoise]",
+            "description": "High-quality zero-shot voice cloning from reference clips. No training required.",
+            "notes": "Better quality with multiple short reference clips. Add sample_2.wav, sample_3.wav etc.",
+            "train": "scholium train-voice --name my_voice --provider tortoise --sample audio.wav",
+        },
     }
 
     if provider_name not in provider_details:
-        click.echo(f"Ã¢ÂÅ’ Unknown provider: {provider_name}")
+        click.echo(f"ÃƒÂ¢Ã‚ÂÃ…â€™ Unknown provider: {provider_name}")
         click.echo(f"\nAvailable providers: {', '.join(provider_details.keys())}")
         return
 
@@ -398,6 +531,18 @@ def provider_info(provider_name):
             import bark
 
             installed = True
+        elif provider_name == "f5tts":
+            import f5_tts
+
+            installed = True
+        elif provider_name == "styletts2":
+            import styletts2
+
+            installed = True
+        elif provider_name == "tortoise":
+            import tortoise
+
+            installed = True
         else:
             installed = False
     except ImportError:
@@ -405,8 +550,8 @@ def provider_info(provider_name):
 
     info = provider_details[provider_name]
 
-    click.echo(f"\nÃ°Å¸â€œÂ¢ {info['name']}\n")
-    click.echo(f"  Status: {'Ã¢Å“â€œ INSTALLED' if installed else 'Ã¢Å“â€” NOT INSTALLED'}")
+    click.echo(f"\nÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¢ {info['name']}\n")
+    click.echo(f"  Status: {'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ INSTALLED' if installed else 'ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ NOT INSTALLED'}")
     click.echo(f"  Type: {info['type']}")
     click.echo(f"  Quality: {info['quality']}")
     click.echo(f"  Speed: {info['speed']}")
@@ -444,13 +589,39 @@ def provider_info(provider_name):
 
 
 @cli.command("list-voices")
+@click.option(
+    "--provider",
+    default=None,
+    help="Query a cloud provider's voice catalogue (e.g. 'elevenlabs'). "
+    "Omit to list locally registered voices.",
+)
 @click.option("--config", default="config.yaml", help="Path to config file")
-def list_voices(config):
-    """List all available voices."""
+def list_voices(provider, config):
+    """List available voices.
 
-    # Load config to get voices_dir
+    Without --provider, lists voices registered in the local voice library.
+
+    With --provider elevenlabs, queries the ElevenLabs API and prints every
+    voice name alongside its voice ID. The ID is what you pass to --voice or
+    set as 'voice' in config.yaml.
+
+    Example:
+        scholium list-voices --provider elevenlabs
+    """
     cfg = Config(config)
-    cfg.ensure_dirs()  # This expands ~ and creates directories
+    cfg.ensure_dirs()
+
+    if provider and provider.lower() == "elevenlabs":
+        _list_elevenlabs_voices(cfg)
+        return
+
+    if provider:
+        raise click.ClickException(
+            f"--provider '{provider}' is not supported by list-voices. "
+            "Currently only 'elevenlabs' supports remote voice listing."
+        )
+
+    # Default: list local voice library
     voice_manager = VoiceManager(cfg.get("voices_dir"))
     voices = voice_manager.list_voices()
 
@@ -466,13 +637,61 @@ def list_voices(config):
     for voice in voices:
         try:
             metadata = voice_manager.get_voice_metadata(voice)
-            provider = metadata.get("provider", "unknown")
+            prov = metadata.get("provider", "unknown")
             desc = metadata.get("description", "No description")
-            click.echo(f"  Ã¢â‚¬Â¢ {voice}")
-            click.echo(f"    Provider: {provider}")
+            click.echo(f"  • {voice}")
+            click.echo(f"    Provider: {prov}")
             click.echo(f"    Description: {desc}")
         except Exception as e:
-            click.echo(f"  Ã¢â‚¬Â¢ {voice} (error loading metadata: {e})")
+            click.echo(f"  • {voice} (error loading metadata: {e})")
+
+
+def _list_elevenlabs_voices(cfg):
+    """Print all ElevenLabs voices with their voice IDs."""
+    try:
+        from elevenlabs.client import ElevenLabs
+    except ImportError:
+        raise click.ClickException(
+            "ElevenLabs not installed. Install with: pip install scholium[elevenlabs]"
+        )
+
+    import os
+
+    api_key = (
+        cfg.get("elevenlabs", {}).get("api_key")
+        or os.environ.get("ELEVENLABS_API_KEY")
+    )
+    if not api_key:
+        raise click.ClickException(
+            "No ElevenLabs API key found.\n"
+            "Set it with: export ELEVENLABS_API_KEY='your_key'\n"
+            "Or add api_key under elevenlabs: in config.yaml (not recommended for security)."
+        )
+
+    try:
+        client = ElevenLabs(api_key=api_key)
+        voices = client.voices.get_all().voices
+    except Exception as e:
+        raise click.ClickException(f"Failed to fetch ElevenLabs voices: {e}")
+
+    if not voices:
+        click.echo("No voices found on your ElevenLabs account.")
+        return
+
+    # Sort by name for readability
+    voices = sorted(voices, key=lambda v: v.name.lower())
+
+    click.echo(f"\nElevenLabs voices ({len(voices)} total):")
+    click.echo(f"  {'Name':<30}  {'Voice ID':<24}  Category")
+    click.echo(f"  {'-'*30}  {'-'*24}  --------")
+    for v in voices:
+        category = getattr(v, "category", "") or ""
+        click.echo(f"  {v.name:<30}  {v.voice_id:<24}  {category}")
+
+    click.echo(
+        "\nUse the Voice ID (not the name) with --voice or in config.yaml:"
+    )
+    click.echo('  voice: "Xb7hH8MSUJpSbSDYk0k2"   # Alice')
 
 
 @cli.command()
@@ -552,10 +771,10 @@ def generate(
     is_verbose = cfg.get("verbose")
 
     if is_verbose:
-        click.echo(f"📄 Slides: {slides_md}")
-        click.echo(f"🎬 Output: {output_mp4}")
-        click.echo(f"🎤 Voice: {cfg.get('voice')}")
-        click.echo(f"📊 TTS Provider: {cfg.get('tts_provider')}")
+        click.echo(f"ðŸ“„ Slides: {slides_md}")
+        click.echo(f"ðŸŽ¬ Output: {output_mp4}")
+        click.echo(f"ðŸŽ¤ Voice: {cfg.get('voice')}")
+        click.echo(f"ðŸ“Š TTS Provider: {cfg.get('tts_provider')}")
 
     try:
         # Initialize components
@@ -564,7 +783,7 @@ def generate(
 
         # Step 1: Process slides
         if is_verbose:
-            click.echo("\n🔨 Processing slides...")
+            click.echo("\nðŸ”¨ Processing slides...")
 
         slide_processor = SlideProcessor(
             pandoc_template=cfg.get("pandoc_template"), resolution=tuple(cfg.get("resolution"))
@@ -574,7 +793,7 @@ def generate(
         slide_images = slide_processor.process(slides_md, str(slides_output_dir))
 
         if is_verbose:
-            click.echo(f"   ✓ Generated {len(slide_images)} slides")
+            click.echo(f"   âœ“ Generated {len(slide_images)} slides")
 
         # Save slides as PDF in output directory (unless --no-pdf)
         output_path = Path(output_mp4)
@@ -615,15 +834,15 @@ def generate(
                     img.close()
 
                 if is_verbose:
-                    click.echo(f"   ✓ Saved slides PDF: {slides_pdf_path}")
+                    click.echo(f"   âœ“ Saved slides PDF: {slides_pdf_path}")
 
             except Exception as e:
                 if is_verbose:
-                    click.echo(f"   ⚠️  Warning: Could not create slides PDF: {e}")
+                    click.echo(f"   âš ï¸  Warning: Could not create slides PDF: {e}")
 
         # Step 2: Parse narration from embedded notes
         if is_verbose:
-            click.echo("\n📖 Parsing narration...")
+            click.echo("\nðŸ“– Parsing narration...")
 
         from .unified_parser import UnifiedParser, validate_slides
 
@@ -633,11 +852,11 @@ def generate(
         if is_verbose:
             slides_with_narration = sum(1 for s in slides if s.has_narration)
             slides_without_narration = len(slides) - slides_with_narration
-            click.echo(f"   ✓ Parsed {len(slides)} slides from markdown")
-            click.echo(f"     • {slides_with_narration} with narration")
+            click.echo(f"   âœ“ Parsed {len(slides)} slides from markdown")
+            click.echo(f"     â€¢ {slides_with_narration} with narration")
             if slides_without_narration > 0:
                 click.echo(
-                    f"     • {slides_without_narration} without narration (will show for {cfg.get('timing.min_slide_duration', 3.0)}s)"
+                    f"     â€¢ {slides_without_narration} without narration (will show for {cfg.get('timing.min_slide_duration', 3.0)}s)"
                 )
 
         # Expand slides into segments
@@ -692,32 +911,41 @@ def generate(
         if is_verbose:
             narrated_segments = sum(1 for s in segments if s["text"].strip())
             silent_segments = len(segments) - narrated_segments
-            click.echo(f"   ✓ Generated {len(segments)} segments:")
-            click.echo(f"     • {narrated_segments} with narration")
+            click.echo(f"   âœ“ Generated {len(segments)} segments:")
+            click.echo(f"     â€¢ {narrated_segments} with narration")
             if silent_segments > 0:
-                click.echo(f"     • {silent_segments} silent (section/TOC slides)")
-            click.echo(f"     • Total video pages: {len(slide_images)}")
+                click.echo(f"     â€¢ {silent_segments} silent (section/TOC slides)")
+            click.echo(f"     â€¢ Total video pages: {len(slide_images)}")
 
         # Step 3: Load voice and generate audio
         if is_verbose:
-            click.echo("\n🎤 Generating audio...")
+            click.echo("\nðŸŽ¤ Generating audio...")
 
         voice_manager = VoiceManager(cfg.get("voices_dir"))
         voice_name = cfg.get("voice")
         provider_name = cfg.get("tts_provider")
 
-        # Some providers (Piper, OpenAI, Bark) use their own voice names
-        # Others (Coqui, ElevenLabs) use the voice library
-        providers_using_voice_library = ["coqui"]
+        # Zero-shot providers need a reference audio sample, sourced from either
+        # the voice library or a model_path set directly in config.yaml.
+        zero_shot_providers = ["coqui", "f5tts", "styletts2", "tortoise"]
 
-        if provider_name.lower() in providers_using_voice_library:
-            # Check voice library
-            if not voice_manager.voice_exists(voice_name):
+        if provider_name.lower() in zero_shot_providers:
+            provider_config = cfg.get(provider_name, {})
+            if voice_manager.voice_exists(voice_name):
+                # Prefer a registered voice from the library
+                voice_config = voice_manager.load_voice(voice_name, provider_name)
+            elif provider_config.get("model_path"):
+                # Fall back to model_path configured directly in config.yaml;
+                # the provider will resolve the path relative to voices_dir.
+                voice_config = {"voice": voice_name, "provider": provider_name}
+            else:
                 raise click.ClickException(
-                    f"Voice '{voice_name}' not found. "
-                    f"Available voices: {', '.join(voice_manager.list_voices())}"
+                    f"Voice '{voice_name}' not found and no model_path is configured "
+                    f"under '{provider_name}:' in config.yaml.\n"
+                    f"Available voices: {', '.join(voice_manager.list_voices()) or '(none)'}\n"
+                    f"To register a voice: scholium train-voice --provider {provider_name} "
+                    f"--name {voice_name} --sample audio.wav"
                 )
-            voice_config = voice_manager.load_voice(voice_name, provider_name)
         else:
             # Provider uses its own voice names (Piper, OpenAI, Bark)
             # Voice name is passed directly to the provider
@@ -751,13 +979,13 @@ def generate(
         total_duration = sum(s["duration"] for s in segments_with_audio)
         if is_verbose:
             click.echo(
-                f"   ✓ Generated {len(segments_with_audio)} audio segments ({total_duration:.1f}s total)"
+                f"   âœ“ Generated {len(segments_with_audio)} audio segments ({total_duration:.1f}s total)"
             )
 
         # Step 4: Generate video (unless --audio-only)
         if not audio_only:
             if is_verbose:
-                click.echo("\n🎬 Generating video...")
+                click.echo("\nðŸŽ¬ Generating video...")
 
             video_generator = VideoGenerator(
                 resolution=tuple(cfg.get("resolution")), fps=cfg.get("fps")
@@ -772,34 +1000,34 @@ def generate(
             )
 
             if is_verbose:
-                click.echo(f"   ✓ Video saved to {output_mp4}")
+                click.echo(f"   âœ“ Video saved to {output_mp4}")
         else:
             if is_verbose:
-                click.echo(f"\n⏭️  Skipping video generation (--audio-only)")
+                click.echo(f"\nâ­ï¸  Skipping video generation (--audio-only)")
 
         # Cleanup
         if not cfg.get("keep_temp_files"):
             if is_verbose:
-                click.echo("\n🧹 Cleaning up temporary files...")
+                click.echo("\nðŸ§¹ Cleaning up temporary files...")
             shutil.rmtree(temp_dir, ignore_errors=True)
         else:
             if is_verbose:
-                click.echo(f"\n📁  Temporary files kept in {temp_dir}")
+                click.echo(f"\nðŸ“  Temporary files kept in {temp_dir}")
 
         # Success message
         if audio_only:
             audio_dir = temp_dir / "audio" if cfg.get("keep_temp_files") else output_dir / "audio"
-            click.echo(f"\n✅ Success! Audio generated in {audio_dir}")
+            click.echo(f"\nâœ… Success! Audio generated in {audio_dir}")
         else:
-            click.echo(f"\n✅ Success! Video generated: {output_mp4}")
+            click.echo(f"\nâœ… Success! Video generated: {output_mp4}")
 
         if not no_pdf and slides_pdf_path.exists():
-            click.echo(f"📄 Slides PDF: {slides_pdf_path}")
+            click.echo(f"ðŸ“„ Slides PDF: {slides_pdf_path}")
 
         # Post-generation actions
         if play and not audio_only:
             if is_verbose:
-                click.echo(f"\n▶️  Playing video...")
+                click.echo(f"\nâ–¶ï¸  Playing video...")
             try:
                 import platform
                 import subprocess
@@ -812,11 +1040,11 @@ def generate(
                 else:  # Linux
                     subprocess.run(["xdg-open", str(output_mp4)])
             except Exception as e:
-                click.echo(f"⚠️  Could not play video: {e}")
+                click.echo(f"âš ï¸  Could not play video: {e}")
 
         if open_dir:
             if is_verbose:
-                click.echo(f"\n📂 Opening output directory...")
+                click.echo(f"\nðŸ“‚ Opening output directory...")
             try:
                 import platform
                 import subprocess
@@ -829,7 +1057,7 @@ def generate(
                 else:  # Linux
                     subprocess.run(["xdg-open", str(output_dir)])
             except Exception as e:
-                click.echo(f"⚠️  Could not open directory: {e}")
+                click.echo(f"âš ï¸  Could not open directory: {e}")
 
     except Exception as e:
         raise click.ClickException(str(e))

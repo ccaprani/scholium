@@ -65,6 +65,33 @@ bark = [
     "torchaudio>=2.0.0",
 ]
 
+# F5-TTS - Fast, high-quality local voice cloning
+# Requires a reference audio clip (5-15s); no training step needed
+f5tts = [
+    "f5-tts>=0.3.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+]
+
+# StyleTTS2 - Expressive local voice cloning with diffusion
+# Uses the unofficial pip wrapper; for source install see:
+# https://github.com/yl4579/StyleTTS2
+styletts2 = [
+    "styletts2>=0.1.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "soundfile>=0.12.0",
+]
+
+# Tortoise TTS - Very high quality, slower local voice cloning
+# Voice cloning from a folder of short reference clips; no training required
+tortoise = [
+    "tortoise-tts>=2.1.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+]
+
 # All TTS providers
 all = [
     "piper-tts>=1.2.0",
@@ -76,6 +103,10 @@ all = [
     "torchaudio>=2.0.0",
     "openai>=1.0.0",
     "bark>=0.1.0",
+    "f5-tts>=0.3.0",
+    "styletts2>=0.1.0",
+    "tortoise-tts>=2.1.0",
+    "soundfile>=0.12.0",
 ]
 
 # Development dependencies
@@ -92,6 +123,7 @@ content-type = "text/markdown"
 
 [project.scripts]
 scholium = "scholium.main:cli"
+scholium-train = "scholium.train_voice:cli"
 
 [project.urls]
 Homepage = "https://github.com/ccaprani/scholium"

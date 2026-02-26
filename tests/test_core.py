@@ -35,9 +35,9 @@ class TestConfig:
         """Default values are present when no config file exists."""
         cfg = Config(config_path="nonexistent.yaml")
 
-        assert cfg.get("slide_marker") == "[NEXT]"
         assert cfg.get("pandoc_template") == "beamer"
         assert cfg.get("fps") == 30
+        assert cfg.get("tts_provider") == "piper"
 
     def test_config_get_nested(self):
         """Dot-notation access returns nested values."""

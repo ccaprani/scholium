@@ -54,7 +54,7 @@ scholium generate lecture.md lecture.mp4
 
 - 📝 **Unified Markdown Format**: Slides and narration in one file with `::: notes :::` blocks
 - 🎯 **Pandoc Integration**: Full Beamer support with `slide-level` for section-based lectures
-- 🎤 **Multiple TTS Providers**: Piper (local), ElevenLabs (cloud), Coqui (voice cloning), OpenAI, Bark
+- 🎤 **Multiple TTS Providers**: Piper (local), ElevenLabs (cloud), Coqui, F5-TTS, StyleTTS2, Tortoise (local voice cloning), OpenAI, Bark
 - ⏱️ **Flexible Timing**: Control pauses, slide duration, and pacing with simple directives
 - 🔧 **Production Ready**: Batch processing, validation, verbose output
 - 🎨 **Professional Output**: 1080p video with synchronized audio and slides
@@ -87,6 +87,9 @@ pip install scholium[elevenlabs]  # High quality cloud API
 pip install scholium[coqui]       # Local voice cloning
 pip install scholium[openai]      # OpenAI TTS
 pip install scholium[bark]        # Highest quality, slowest
+pip install scholium[f5tts]       # Fast local voice cloning (zero-shot)
+pip install scholium[styletts2]   # Expressive local voice cloning
+pip install scholium[tortoise]    # Very high quality local voice cloning
 
 # All providers:
 pip install scholium[all]
@@ -104,8 +107,8 @@ scholium generate slides.md output.mp4 [options]
 
 ### Common Options
 
-- `--voice NAME`: Voice ID to use (e.g., `en_US-lessac-medium` for Piper, or ElevenLabs voice ID)
-- `--provider NAME`: TTS provider (piper, elevenlabs, coqui, openai, bark)
+- `--voice NAME`: Voice ID to use (e.g., `en_US-lessac-medium` for Piper, an ElevenLabs voice ID, or a registered local voice name)
+- `--provider NAME`: TTS provider (`piper`, `elevenlabs`, `coqui`, `openai`, `bark`, `f5tts`, `styletts2`, `tortoise`)
 - `--section-duration SECONDS`: Duration for silent section/TOC slides (default: 3.0)
 - `--verbose`: Show detailed progress
 - `--keep-temp`: Keep temporary files for debugging
@@ -302,10 +305,13 @@ Each bullet creates a new slide page. Split your narration into paragraphs (sepa
 | Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost |
 |----------|------|---------|-------|---------------|---------|------|
 | **Piper** | Local | Medium-High | Fast | ✗ | ✗ | Free |
-| ElevenLabs | Cloud | Very High | Fast | ✓ | ✓ | Free tier + paid |
-| Coqui | Local | High | Medium | ✓ | ✗ | Free |
-| OpenAI | Cloud | High | Fast | ✗ | ✓ | Paid |
-| Bark | Local | Very High | Slow | ⚠️ | ✗ | Free |
+| **ElevenLabs** | Cloud | Very High | Fast | ✓ | ✓ | Free tier + paid |
+| **Coqui** | Local | High | Medium | ✓ | ✗ | Free |
+| **OpenAI** | Cloud | High | Fast | ✗ | ✓ | Paid |
+| **Bark** | Local | Very High | Slow | ⚠️ | ✗ | Free |
+| **F5-TTS** | Local | Very High | Fast | ✓ | ✗ | Free |
+| **StyleTTS2** | Local | Very High | Medium | ✓ | ✗ | Free |
+| **Tortoise** | Local | Very High | Slow | ✓ | ✗ | Free |
 
 ### Piper (Recommended)
 
@@ -318,41 +324,65 @@ Available voices: `en_US-lessac-medium`, `en_US-amy-medium`, `en_GB-alan-medium`
 
 ### ElevenLabs (Highest Quality)
 
+ElevenLabs voices are identified by a **Voice ID**, not their display name. Use `list-voices` to find the ID for the voice you want:
+
 ```bash
 pip install scholium[elevenlabs]
 export ELEVENLABS_API_KEY="your_key"
 
-# List available voices
-python -c "
-from elevenlabs.client import ElevenLabs
-import os
-client = ElevenLabs(api_key=os.getenv('ELEVENLABS_API_KEY'))
-for v in client.voices.get_all().voices:
-    print(f'{v.name:20s} - {v.voice_id}')
-"
+# List voices — shows Name and Voice ID side by side
+scholium list-voices --provider elevenlabs
 
-# Use with voice ID
-scholium generate lecture.md output.mp4 \
-    --provider elevenlabs \
-    --voice Xb7hH8MSUJpSbSDYk0k2  # Alice
+# Use the Voice ID with --voice (not the display name)
+scholium generate lecture.md output.mp4 --provider elevenlabs --voice Xb7hH8MSUJpSbSDYk0k2
 ```
 
-### Coqui (Voice Cloning)
+### Coqui (Local Voice Cloning)
 
 ```bash
 pip install scholium[coqui]
-
-# Train from your audio sample (30s minimum, 1hr+ ideal)
-scholium train-voice \
-    --name my_voice \
-    --provider coqui \
-    --sample recording.wav
-
-# Use your cloned voice
-scholium generate lecture.md output.mp4 \
-    --provider coqui \
-    --voice my_voice
+scholium train-voice --name my_voice --provider coqui --sample recording.wav
+scholium generate lecture.md output.mp4 --provider coqui --voice my_voice
 ```
+
+### F5-TTS (Fast Local Voice Cloning)
+
+Zero-shot cloning from a 5-15 second reference clip — no training step required.
+
+```bash
+pip install scholium[f5tts]
+
+# Option A: register a voice in the library
+scholium train-voice --name my_voice --provider f5tts --sample recording.wav
+scholium generate lecture.md output.mp4 --provider f5tts --voice my_voice
+
+# Option B: point directly to a reference file in config.yaml
+# f5tts:
+#   model_path: "f5tts/my_voice/sample.wav"   # relative to voices_dir
+#   ref_text: "Words spoken in the recording."
+```
+
+### StyleTTS2 (Expressive Local Voice Cloning)
+
+```bash
+pip install scholium[styletts2]
+scholium train-voice --name my_voice --provider styletts2 --sample recording.wav
+scholium generate lecture.md output.mp4 --provider styletts2 --voice my_voice
+```
+
+Or set `styletts2.model_path` in `config.yaml` to skip voice registration.
+
+### Tortoise TTS (Highest-Quality Local Cloning)
+
+```bash
+pip install scholium[tortoise]
+scholium train-voice --name my_voice --provider tortoise --sample recording.wav
+# Add extra clips for better quality:
+cp clip2.wav ~/.local/share/scholium/voices/tortoise/my_voice/sample_2.wav
+scholium generate lecture.md output.mp4 --provider tortoise --voice my_voice
+```
+
+Or set `tortoise.model_path` in `config.yaml` to skip voice registration.
 
 ---
 
@@ -394,32 +424,66 @@ elevenlabs:
 
 coqui:
   model: tts_models/multilingual/multi-dataset/xtts_v2
+
+# Zero-shot local providers: set model_path to use a reference audio file
+# directly without registering a voice via scholium train-voice.
+# Paths are relative to voices_dir (or absolute).
+f5tts:
+  model: "F5-TTS"
+  # model_path: "f5tts/my_voice/sample.wav"
+  # ref_text: "Exact words spoken in the reference clip."
+
+styletts2:
+  alpha: 0.3
+  beta: 0.7
+  diffusion_steps: 5
+  # model_path: "styletts2/my_voice/sample.wav"
+
+tortoise:
+  preset: "fast"
+  # model_path: "tortoise/my_voice/sample.wav"
 ```
 
 ---
 
 ## Voice Management
 
-### List Trained Voices
+### List Voices
 
 ```bash
+# Local voice library (Coqui, F5-TTS, StyleTTS2, Tortoise)
 scholium list-voices
+
+# ElevenLabs cloud voices — shows Name and Voice ID
+scholium list-voices --provider elevenlabs
 ```
 
-### Train a Voice (Coqui)
+### Register a Voice
+
+All zero-shot local providers (Coqui, F5-TTS, StyleTTS2, Tortoise) use the same command:
 
 ```bash
 scholium train-voice \
     --name my_lecture_voice \
-    --provider coqui \
+    --provider f5tts \          # or coqui, styletts2, tortoise
     --sample my_recording.wav \
     --description "My natural teaching voice"
 ```
 
-### Regenerate Embeddings
+### Skip Registration with `model_path`
+
+For F5-TTS, StyleTTS2, and Tortoise, you can point directly to a reference file in `config.yaml` without registering a voice:
+
+```yaml
+f5tts:
+  model_path: "f5tts/my_voice/sample.wav"   # relative to voices_dir, or absolute
+  ref_text: "The words spoken in the clip."  # optional but improves accuracy
+```
+
+### Regenerate Embeddings (Coqui)
 
 ```bash
-# Speed up Coqui voice generation by pre-computing embeddings
+# Pre-compute speaker embeddings to speed up Coqui generation
 scholium regenerate-embeddings --voice my_lecture_voice
 ```
 
@@ -483,10 +547,10 @@ See the `examples/` directory for:
 
 **"Slide count mismatch"**: Don't add `::: notes :::` after `#` section headings when using `slide-level: 2`
 
-**"Voice not found"**: 
+**"Voice not found"**:
 - Piper: Use voice name like `en_US-lessac-medium`
 - ElevenLabs: Use voice ID (run the list command above)
-- Coqui: Use trained voice name from `scholium list-voices`
+- Coqui / F5-TTS / StyleTTS2 / Tortoise: Use a registered voice name from `scholium list-voices`, or set `model_path` under the provider section in `config.yaml`
 
 **"Out of memory"**: 
 - Close other applications

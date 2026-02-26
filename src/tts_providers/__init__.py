@@ -1,13 +1,14 @@
-"""TTS provider imports with graceful handling of optional dependencies."""
+"""TTS providers package."""
 
-# Import base provider
-from .base import BaseTTSProvider
+# Try to import each provider
+# If not installed, set to None
 
-# Try to import each provider, setting to None if unavailable
+__version__ = "0.1.0"
+
 try:
-    from .coqui import CoquiProvider
+    from .piper import PiperProvider
 except ImportError:
-    CoquiProvider = None
+    PiperProvider = None
 
 try:
     from .el import ElevenLabsProvider
@@ -15,9 +16,9 @@ except ImportError:
     ElevenLabsProvider = None
 
 try:
-    from .piper import PiperProvider
+    from .coqui import CoquiProvider
 except ImportError:
-    PiperProvider = None
+    CoquiProvider = None
 
 try:
     from .openai import OpenAIProvider
@@ -29,6 +30,21 @@ try:
 except ImportError:
     BarkProvider = None
 
+try:
+    from .f5tts import F5TTSProvider
+except ImportError:
+    F5TTSProvider = None
+
+try:
+    from .styletts2 import StyleTTS2Provider
+except ImportError:
+    StyleTTS2Provider = None
+
+try:
+    from .tortoise import TortoiseProvider
+except ImportError:
+    TortoiseProvider = None
+
 
 def get_available_providers():
     """Get list of available TTS providers.
@@ -37,11 +53,14 @@ def get_available_providers():
         dict: Maps provider names to their classes (or None if unavailable)
     """
     return {
-        "coqui": CoquiProvider,
-        "elevenlabs": ElevenLabsProvider,
         "piper": PiperProvider,
+        "elevenlabs": ElevenLabsProvider,
+        "coqui": CoquiProvider,
         "openai": OpenAIProvider,
         "bark": BarkProvider,
+        "f5tts": F5TTSProvider,
+        "styletts2": StyleTTS2Provider,
+        "tortoise": TortoiseProvider,
     }
 
 
@@ -56,14 +75,7 @@ def get_installed_providers():
 
 
 def is_provider_available(provider_name: str) -> bool:
-    """Check if a TTS provider is available.
-
-    Args:
-        provider_name: Name of the provider to check
-
-    Returns:
-        bool: True if provider is installed and available
-    """
+    """Check if a TTS provider is available."""
     providers = get_available_providers()
     return provider_name in providers and providers[provider_name] is not None
 
@@ -71,14 +83,9 @@ def is_provider_available(provider_name: str) -> bool:
 def get_provider_class(provider_name: str):
     """Get provider class by name.
 
-    Args:
-        provider_name: Name of the provider
-
-    Returns:
-        Provider class if available
-
     Raises:
-        ImportError: If provider is not available
+        ValueError: If provider name is unknown.
+        ImportError: If provider is not installed.
     """
     providers = get_available_providers()
 
@@ -99,12 +106,14 @@ def get_provider_class(provider_name: str):
 
 
 __all__ = [
-    "BaseTTSProvider",
-    "CoquiProvider",
-    "ElevenLabsProvider",
     "PiperProvider",
+    "ElevenLabsProvider",
+    "CoquiProvider",
     "OpenAIProvider",
     "BarkProvider",
+    "F5TTSProvider",
+    "StyleTTS2Provider",
+    "TortoiseProvider",
     "get_available_providers",
     "get_installed_providers",
     "is_provider_available",

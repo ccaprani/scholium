@@ -18,7 +18,8 @@ class TTSEngine:
         """Initialize TTS engine.
 
         Args:
-            provider_name: Name of TTS provider ('piper', 'elevenlabs', 'coqui', 'openai', 'bark')
+            provider_name: Name of TTS provider ('piper', 'elevenlabs', 'coqui',
+                'openai', 'bark', 'f5tts', 'styletts2', 'tortoise')
             provider_config: Configuration for the provider
             voices_dir: Directory for storing voice models and trained voices
             config: Config object for accessing global settings
@@ -28,6 +29,18 @@ class TTSEngine:
         self.voices_dir = voices_dir or "~/.local/share/scholium/voices"
         self.config = config
         self.provider = self._create_provider()
+
+    def _resolve_model_path(self, raw: str) -> str:
+        """Return an absolute path for a reference audio file.
+
+        Relative paths are resolved against ``voices_dir``, so a value of
+        ``"my_voice/sample.wav"`` in ``config.yaml`` expands to
+        ``{voices_dir}/my_voice/sample.wav``.
+        """
+        p = Path(raw).expanduser()
+        if not p.is_absolute():
+            p = (Path(self.voices_dir).expanduser() / p).resolve()
+        return str(p)
 
     def _create_provider(self):
         """Create TTS provider instance."""
@@ -65,6 +78,41 @@ class TTSEngine:
                 from tts_providers import BarkProvider
 
                 return BarkProvider(model=self.provider_config.get("model", "small"))
+            elif self.provider_name == "f5tts":
+                from tts_providers import F5TTSProvider
+
+                raw = self.provider_config.get("model_path")
+                return F5TTSProvider(
+                    model=self.provider_config.get("model", "F5-TTS"),
+                    voices_dir=self.voices_dir,
+                    vocoder=self.provider_config.get("vocoder", "vocos"),
+                    ref_audio=self._resolve_model_path(raw) if raw else None,
+                    ref_text=self.provider_config.get("ref_text", ""),
+                )
+            elif self.provider_name == "styletts2":
+                from tts_providers import StyleTTS2Provider
+
+                raw = self.provider_config.get("model_path")
+                return StyleTTS2Provider(
+                    model_config=self.provider_config.get("model_config"),
+                    model_checkpoint=self.provider_config.get("model_checkpoint"),
+                    voices_dir=self.voices_dir,
+                    alpha=self.provider_config.get("alpha", 0.3),
+                    beta=self.provider_config.get("beta", 0.7),
+                    diffusion_steps=self.provider_config.get("diffusion_steps", 5),
+                    ref_audio=self._resolve_model_path(raw) if raw else None,
+                )
+            elif self.provider_name == "tortoise":
+                from tts_providers import TortoiseProvider
+
+                raw = self.provider_config.get("model_path")
+                return TortoiseProvider(
+                    preset=self.provider_config.get("preset", "fast"),
+                    voices_dir=self.voices_dir,
+                    kv_cache=self.provider_config.get("kv_cache", True),
+                    half=self.provider_config.get("half", True),
+                    ref_audio=self._resolve_model_path(raw) if raw else None,
+                )
             else:
                 raise ValueError(f"Unknown TTS provider: {self.provider_name}")
         except ImportError as e:
@@ -108,6 +156,9 @@ class TTSEngine:
                 "coqui": 24000,
                 "openai": 24000,
                 "bark": 24000,
+                "f5tts": 24000,
+                "styletts2": 24000,
+                "tortoise": 24000,
             }
             return provider_sample_rates.get(self.provider_name, 22050)
 
@@ -145,6 +196,9 @@ class TTSEngine:
                     "coqui": 24000,
                     "openai": 24000,
                     "bark": 24000,
+                    "f5tts": 24000,
+                    "styletts2": 24000,
+                    "tortoise": 24000,
                 }
                 sample_rate = provider_sample_rates.get(self.provider_name, 22050)
 
@@ -199,10 +253,12 @@ class TTSEngine:
         reference_audio = None
 
         # Find first non-pause segment to establish sample rate reference
+        # Note: the parser converts [PAUSE Xs] directives to [SILENT Xs] segments;
+        # generate_segments therefore checks for [SILENT Xs], not [PAUSE Xs].
         first_tts_index = None
         for idx, seg in enumerate(segments):
             text = seg["text"].strip()
-            pause_match = re.match(r"\[PAUSE\s+([\d.]+)s?\]", text, re.IGNORECASE)
+            pause_match = re.match(r"\[SILENT\s+([\d.]+)s?\]", text, re.IGNORECASE)
             if text and not pause_match:
                 first_tts_index = idx
                 break
@@ -225,9 +281,9 @@ class TTSEngine:
             if reference_audio and str(audio_path) == reference_audio:
                 audio_duration = self.provider.get_audio_duration(str(audio_path))
             else:
-                # Check for [PAUSE Xs] marker
+                # Check for [SILENT Xs] marker (parser converts [PAUSE Xs] → [SILENT Xs])
                 text = segment["text"].strip()
-                pause_match = re.match(r"\[PAUSE\s+([\d.]+)s?\]", text, re.IGNORECASE)
+                pause_match = re.match(r"\[SILENT\s+([\d.]+)s?\]", text, re.IGNORECASE)
 
                 if pause_match:
                     # This is a pause segment - create silent audio matching reference

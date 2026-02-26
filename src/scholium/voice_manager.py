@@ -3,7 +3,7 @@
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class VoiceManager:
@@ -86,10 +86,13 @@ class VoiceManager:
 
         Args:
             voice_name: Name of the voice
-            provider: TTS provider ('elevenlabs' or 'coqui')
+            provider: TTS provider (``'elevenlabs'``, ``'coqui'``, ``'f5tts'``,
+                ``'styletts2'``, or ``'tortoise'``)
 
         Returns:
-            Voice configuration dictionary for the provider
+            Voice configuration dictionary for the provider.  File paths
+            stored in ``metadata.yaml`` are resolved to absolute paths before
+            being returned.
 
         Raises:
             ValueError: If voice provider doesn't match requested provider
@@ -119,19 +122,24 @@ class VoiceManager:
         """Create a new voice profile.
 
         Args:
-            voice_name: Name for the voice
-            provider: TTS provider ('elevenlabs' or 'coqui')
-            voice_id: Voice ID (for ElevenLabs)
-            model_path: Path to model file (for Coqui, relative to voice dir)
-            config_path: Path to config file (for Coqui, relative to voice dir)
-            description: Optional description
-            language: Language code (default: 'en')
+            voice_name: Name for the voice.
+            provider: TTS provider — one of ``'elevenlabs'``, ``'coqui'``,
+                ``'f5tts'``, ``'styletts2'``, or ``'tortoise'``.
+            voice_id: ElevenLabs voice ID (required for ``'elevenlabs'``).
+            model_path: Path to the reference audio file, stored relative to
+                the voice directory (e.g. ``"sample.wav"``). Required for
+                ``'coqui'``, ``'f5tts'``, ``'styletts2'``, and ``'tortoise'``.
+            config_path: Path to an optional config file (Coqui source-install
+                only), stored relative to the voice directory.
+            description: Human-readable description of the voice.
+            language: BCP-47 language code (default: ``'en'``).
 
         Returns:
-            Path to created voice directory
+            Absolute path to the created voice directory.
 
         Raises:
-            ValueError: If invalid parameters for provider
+            ValueError: If required parameters for the provider are missing,
+                or if the provider is not supported.
         """
         voice_dir = self.voices_dir / voice_name
         voice_dir.mkdir(parents=True, exist_ok=True)
@@ -154,6 +162,12 @@ class VoiceManager:
             metadata["model_path"] = model_path
             if config_path:
                 metadata["config_path"] = config_path
+
+        elif provider.lower() in ("f5tts", "styletts2", "tortoise"):
+            # Zero-shot providers: store the reference audio path
+            if not model_path:
+                raise ValueError(f"model_path (reference audio) required for {provider} voices")
+            metadata["model_path"] = model_path
 
         else:
             raise ValueError(f"Unknown provider: {provider}")

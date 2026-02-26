@@ -6,7 +6,7 @@ slide_marker: "[NEXT]"  # Marker for slide transitions in transcript
 pandoc_template: "beamer"  # Pandoc template for slide generation
 
 # TTS settings
-# Available providers: piper, elevenlabs, coqui, openai, bark
+# Available providers: piper, elevenlabs, coqui, openai, bark, f5tts, styletts2, tortoise
 # Install with: pip install scholium[provider_name]
 tts_provider: "elevenlabs"  # Default: piper (fast, free, local)
 voice: "Xb7hH8MSUJpSbSDYk0k2" # Voice name (provider-specific)
@@ -35,7 +35,7 @@ coqui:
 # ElevenLabs API settings (for highest quality)
 # Install with: pip install scholium[elevenlabs]
 # Requires API key from elevenlabs.io
-# 
+#
 # ⚠️  SECURITY WARNING: Do NOT store your API key in this file!
 # Use environment variable instead: export ELEVENLABS_API_KEY="your_key"
 elevenlabs:
@@ -47,7 +47,7 @@ elevenlabs:
 # OpenAI TTS settings
 # Install with: pip install scholium[openai]
 # Requires API key from platform.openai.com
-# 
+#
 # ⚠️  SECURITY WARNING: Do NOT store your API key in this file!
 # Use environment variable instead: export OPENAI_API_KEY="your_key"
 openai:
@@ -60,12 +60,46 @@ openai:
 bark:
   model: "small"  # Options: small, medium, large
 
+# F5-TTS settings (fast, high-quality local voice cloning)
+# Install with: pip install scholium[f5tts]
+# Requires a reference audio clip (5-15s); no training step needed
+# Train voice with: scholium train-voice --name my_voice --provider f5tts --sample audio.wav
+f5tts:
+  model: "F5-TTS"       # Options: F5-TTS, E2-TTS
+  vocoder: "vocos"       # Options: vocos, bigvgan
+  # model_path: "my_voice/sample.wav"  # Reference audio, relative to voices_dir (or absolute)
+  # ref_text: ""                        # Transcript of the reference clip (improves accuracy)
+
+# StyleTTS2 settings (expressive local voice cloning with diffusion)
+# Install with: pip install scholium[styletts2]
+# Uses unofficial pip wrapper (pip install styletts2)
+# Train voice with: scholium train-voice --name my_voice --provider styletts2 --sample audio.wav
+styletts2:
+  alpha: 0.3             # Speaking style blend (0=reference style, 1=model default)
+  beta: 0.7              # Diffusion guidance strength
+  diffusion_steps: 5     # More steps = slower but higher quality (5-20)
+  # model_path: "my_voice/sample.wav"  # Reference audio, relative to voices_dir (or absolute)
+  # For source install, set paths to your config and checkpoint:
+  # model_config: "/path/to/StyleTTS2/Models/LJSpeech/config.yml"
+  # model_checkpoint: "/path/to/StyleTTS2/Models/LJSpeech/epochs_2nd_00020.pth"
+
+# Tortoise TTS settings (very high quality, slower local voice cloning)
+# Install with: pip install scholium[tortoise]
+# Zero-shot cloning from reference clips; no training required
+# Train voice with: scholium train-voice --name my_voice --provider tortoise --sample audio.wav
+# Tip: Add sample_2.wav, sample_3.wav etc. to the voice directory for better quality
+tortoise:
+  preset: "fast"         # Options: ultra_fast, fast, standard, high_quality
+  kv_cache: true         # Enable KV caching for faster repeated inference
+  half: true             # Use float16 to reduce VRAM usage (~8GB with half=true)
+  # model_path: "my_voice/sample.wav"  # Reference audio, relative to voices_dir (or absolute)
+
 # Video settings
 resolution: [1920, 1080]  # Output resolution (width, height)
 fps: 30  # Frames per second
 
 # Paths
-# Voice storage directory (stores Piper models and Coqui trained voices)
+# Voice storage directory (stores Piper models and voice samples)
 # Default: ~/.local/share/scholium/voices (system-wide, shared across projects)
 # Override: "./voices" (project-specific, portable with project)
 voices_dir: "~/.local/share/scholium/voices"

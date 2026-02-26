@@ -1,5 +1,6 @@
 """Configuration management for Scholium - automated instructional video generation."""
 
+import copy
 import os
 import yaml
 from pathlib import Path
@@ -39,7 +40,7 @@ class Config:
         Args:
             config_path: Path to config.yaml file. If None, looks in current directory.
         """
-        self.config = self.DEFAULT_CONFIG.copy()
+        self.config = copy.deepcopy(self.DEFAULT_CONFIG)
 
         if config_path is None:
             config_path = "config.yaml"
