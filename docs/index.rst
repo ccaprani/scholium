@@ -45,20 +45,21 @@ Generate video::
    :maxdepth: 2
    :caption: User Guide
 
+   user/installation
    user/quickstart
    user/markdown-format
    user/narration-format
    user/incremental-lists
    user/timing-control
    user/tts-providers
-   user/voice-storage
+   user/voice_storage
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference
+   :caption: Reference
 
-   api/cli
-   api/modules
+   user/cli
+   api/index
 
 .. toctree::
    :maxdepth: 1

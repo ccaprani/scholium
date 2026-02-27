@@ -592,8 +592,9 @@ def provider_info(provider_name):
 @click.option(
     "--provider",
     default=None,
-    help="Query a cloud provider's voice catalogue (e.g. 'elevenlabs'). "
-    "Omit to list locally registered voices.",
+    help="Provider to query: 'piper' (built-in voices + download status), "
+    "'openai' (fixed voice set), 'bark' (preset list), "
+    "'elevenlabs' (cloud catalogue). Omit to list locally registered voices.",
 )
 @click.option("--config", default="config.yaml", help="Path to config file")
 def list_voices(provider, config):
@@ -601,15 +602,37 @@ def list_voices(provider, config):
 
     Without --provider, lists voices registered in the local voice library.
 
+    With --provider piper, lists all built-in Piper voices and shows which
+    are already downloaded locally.
+
+    With --provider openai, lists the fixed set of OpenAI TTS voice names.
+
+    With --provider bark, lists all Bark voice presets grouped by language.
+
     With --provider elevenlabs, queries the ElevenLabs API and prints every
     voice name alongside its voice ID. The ID is what you pass to --voice or
     set as 'voice' in config.yaml.
 
-    Example:
+    Examples:
+        scholium list-voices --provider piper
+        scholium list-voices --provider openai
+        scholium list-voices --provider bark
         scholium list-voices --provider elevenlabs
     """
     cfg = Config(config)
     cfg.ensure_dirs()
+
+    if provider and provider.lower() == "piper":
+        _list_piper_voices()
+        return
+
+    if provider and provider.lower() == "openai":
+        _list_openai_voices()
+        return
+
+    if provider and provider.lower() == "bark":
+        _list_bark_voices()
+        return
 
     if provider and provider.lower() == "elevenlabs":
         _list_elevenlabs_voices(cfg)
@@ -617,8 +640,9 @@ def list_voices(provider, config):
 
     if provider:
         raise click.ClickException(
-            f"--provider '{provider}' is not supported by list-voices. "
-            "Currently only 'elevenlabs' supports remote voice listing."
+            f"--provider '{provider}' is not supported by list-voices.\n"
+            "Supported: 'piper', 'openai', 'bark' (built-in lists), "
+            "'elevenlabs' (cloud catalogue)."
         )
 
     # Default: list local voice library
@@ -644,6 +668,80 @@ def list_voices(provider, config):
             click.echo(f"    Description: {desc}")
         except Exception as e:
             click.echo(f"  • {voice} (error loading metadata: {e})")
+
+
+def _list_piper_voices():
+    """Print all known Piper voices with their local download status."""
+    try:
+        from tts_providers.piper import PiperProvider
+    except ImportError:
+        raise click.ClickException(
+            "Piper not installed. Install with: pip install scholium[piper]"
+        )
+
+    provider = PiperProvider()
+    voices = provider.list_voices()
+
+    click.echo(f"\nPiper voices directory: {provider.voices_dir}")
+    click.echo(f"\nKnown voices ({len(voices)} total):\n")
+    click.echo(f"  {'Voice':<32}  Status")
+    click.echo("  " + "-" * 50)
+
+    for voice in voices:
+        downloaded = (provider.voices_dir / f"{voice}.onnx").exists()
+        status = "downloaded" if downloaded else "auto-downloads on first use"
+        click.echo(f"  {voice:<32}  {status}")
+
+    click.echo()
+    click.echo("Use a voice:")
+    click.echo("  scholium generate slides.md output.mp4 --provider piper --voice <name>")
+    click.echo("\nFull catalogue (900+ voices):")
+    click.echo("  https://huggingface.co/rhasspy/piper-voices")
+
+
+def _list_openai_voices():
+    """Print all available OpenAI TTS voice names."""
+    voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+    click.echo(f"\nOpenAI TTS voices ({len(voices)} total):\n")
+    for voice in voices:
+        click.echo(f"  {voice}")
+    click.echo()
+    click.echo("Use a voice:")
+    click.echo("  scholium generate slides.md output.mp4 --provider openai --voice <name>")
+    click.echo("\nRequires OPENAI_API_KEY to be set.")
+
+
+def _list_bark_voices():
+    """Print all available Bark voice presets grouped by language."""
+    try:
+        from tts_providers.bark import BarkProvider
+    except ImportError:
+        raise click.ClickException(
+            "Bark not installed. Install with: pip install scholium[bark]"
+        )
+
+    voices = BarkProvider().list_voices()
+    en_voices = [v for v in voices if "/en_" in v]
+    other_voices = [v for v in voices if "/en_" not in v]
+
+    # Group non-English by language code
+    by_lang: dict = {}
+    for v in other_voices:
+        lang = v.split("/")[1].split("_")[0]
+        by_lang.setdefault(lang, []).append(v)
+
+    click.echo(f"\nBark voice presets ({len(voices)} total):\n")
+    click.echo("  English:")
+    for v in en_voices:
+        click.echo(f"    {v}")
+    click.echo()
+    for lang, lang_voices in sorted(by_lang.items()):
+        click.echo(f"  {lang}:")
+        for v in lang_voices:
+            click.echo(f"    {v}")
+    click.echo()
+    click.echo("Use a voice:")
+    click.echo("  scholium generate slides.md output.mp4 --provider bark --voice <preset>")
 
 
 def _list_elevenlabs_voices(cfg):

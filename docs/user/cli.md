@@ -120,6 +120,35 @@ Available voices:
     Description: My teaching voice
 ```
 
+### With `--provider piper`
+
+Lists all built-in Piper voices and shows which are already downloaded locally:
+
+```bash
+scholium list-voices --provider piper
+```
+
+```
+Piper voices directory: ~/.local/share/piper/voices
+
+Known voices (9 total):
+
+  Voice                             Status
+  --------------------------------------------------
+  en_US-lessac-medium               downloaded
+  en_US-lessac-low                  auto-downloads on first use
+  en_US-lessac-high                 auto-downloads on first use
+  ...
+
+Use a voice:
+  scholium generate slides.md output.mp4 --provider piper --voice <name>
+
+Full catalogue (900+ voices):
+  https://huggingface.co/rhasspy/piper-voices
+```
+
+Undownloaded voices are fetched automatically the first time they are used.
+
 ### With `--provider elevenlabs`
 
 Queries the ElevenLabs API and lists every voice on your account with its **Voice ID**:
