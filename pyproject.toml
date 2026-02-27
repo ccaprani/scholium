@@ -92,20 +92,17 @@ tortoise = [
     "torchaudio>=2.0.0",
 ]
 
-# All TTS providers
+# All TTS providers with known Python 3.11+ compatibility.
+# Excludes coqui, bark, styletts2, and tortoise-tts due to transitive
+# dependency conflicts on Python >= 3.11 — install those extras individually.
 all = [
     "piper-tts>=1.2.0",
     "pathvalidate>=3.0.0",
     "elevenlabs>=1.0.0,<3.0.0",
-    "TTS>=0.22.0",
-    "transformers>=4.30.0",
+    "openai>=1.0.0",
+    "f5-tts>=0.3.0",
     "torch>=2.0.0",
     "torchaudio>=2.0.0",
-    "openai>=1.0.0",
-    "bark>=0.1.0",
-    "f5-tts>=0.3.0",
-    "styletts2>=0.1.0",
-    "tortoise-tts>=2.1.0",
     "soundfile>=0.12.0",
 ]
 

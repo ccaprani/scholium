@@ -66,17 +66,20 @@ pip install scholium[piper]
 # ElevenLabs (cloud, highest quality)
 pip install scholium[elevenlabs]
 
-# Coqui (local voice cloning)
-pip install scholium[coqui]
-
-# OpenAI (latest models)
+# OpenAI (cloud, good quality)
 pip install scholium[openai]
 
-# Bark (highest quality local, slow)
-pip install scholium[bark]
+# F5-TTS (fast local voice cloning)
+pip install scholium[f5tts]
 
-# Multiple providers
-pip install scholium[piper,elevenlabs]
+# Multiple compatible providers at once
+pip install scholium[all]         # piper + elevenlabs + openai + f5tts
+
+# Providers with known Python 3.11+ dependency conflicts (install individually):
+pip install scholium[coqui]       # Coqui TTS - local voice cloning
+pip install scholium[bark]        # Bark - expressive local TTS
+pip install scholium[styletts2]   # StyleTTS2 - diffusion-based cloning
+pip install scholium[tortoise]    # Tortoise - highest quality local cloning
 ```
 
 ### Virtual Environment (Recommended)

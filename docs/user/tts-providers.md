@@ -4,16 +4,19 @@ Scholium supports eight text-to-speech providers spanning cloud APIs, fixed loca
 
 ## Provider Comparison
 
-| Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost |
-|----------|------|---------|-------|---------------|---------|------|
-| **Piper** | Local | ⭐⭐⭐⭐ | Fast | ❌ | ❌ | Free |
-| **ElevenLabs** | Cloud | ⭐⭐⭐⭐⭐ | Fast | ✅ | ✅ | Paid |
-| **Coqui** | Local | ⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free |
-| **OpenAI** | Cloud | ⭐⭐⭐⭐ | Fast | ❌ | ✅ | Paid |
-| **Bark** | Local | ⭐⭐⭐⭐⭐ | Slow | ⚠️ | ❌ | Free |
-| **F5-TTS** | Local | ⭐⭐⭐⭐⭐ | Fast | ✅ | ❌ | Free |
-| **StyleTTS2** | Local | ⭐⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free |
-| **Tortoise** | Local | ⭐⭐⭐⭐⭐ | Slow | ✅ | ❌ | Free |
+| Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost | `[all]` |
+|----------|------|---------|-------|---------------|---------|------|---------|
+| **Piper** | Local | ⭐⭐⭐⭐ | Fast | ❌ | ❌ | Free | ✅ |
+| **ElevenLabs** | Cloud | ⭐⭐⭐⭐⭐ | Fast | ✅ | ✅ | Paid | ✅ |
+| **Coqui** | Local | ⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free | ❌ |
+| **OpenAI** | Cloud | ⭐⭐⭐⭐ | Fast | ❌ | ✅ | Paid | ✅ |
+| **Bark** | Local | ⭐⭐⭐⭐⭐ | Slow | ⚠️ | ❌ | Free | ❌ |
+| **F5-TTS** | Local | ⭐⭐⭐⭐⭐ | Fast | ✅ | ❌ | Free | ✅ |
+| **StyleTTS2** | Local | ⭐⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free | ❌ |
+| **Tortoise** | Local | ⭐⭐⭐⭐⭐ | Slow | ✅ | ❌ | Free | ❌ |
+
+> **Note:** `pip install scholium[all]` installs only the four providers marked ✅ above (Piper, ElevenLabs, OpenAI, F5-TTS).
+> Coqui, Bark, StyleTTS2, and Tortoise have transitive dependencies that conflict on Python 3.11+ and must be installed individually.
 
 ---
 
@@ -116,7 +119,7 @@ scholium generate slides.md output.mp4 --provider coqui --voice my_voice
 
 **Pros:** Free, fully local, solid voice cloning
 
-**Cons:** Requires Python 3.11, dependency conflicts with some environments, slower than cloud providers
+**Cons:** Transitive dependency conflicts on Python 3.11+; excluded from `[all]` — install via `pip install scholium[coqui]` individually. Slower than cloud providers.
 
 ---
 
@@ -151,7 +154,7 @@ scholium generate slides.md output.mp4 --provider bark
 
 **Pros:** Can produce non-speech sounds (laughter, sighs, music), fully local
 
-**Cons:** Very slow (~60 s per sentence on CPU), high VRAM usage
+**Cons:** Very slow (~60 s per sentence on CPU), high VRAM usage. Transitive dependency conflicts on Python 3.11+; excluded from `[all]` — install via `pip install scholium[bark]` individually.
 
 ---
 
@@ -217,7 +220,7 @@ styletts2:
 
 **Pros:** Very natural prosody, expressive, fully local
 
-**Cons:** Source install from GitHub or unofficial pip wrapper; slower than F5-TTS
+**Cons:** Source install from GitHub or unofficial pip wrapper; slower than F5-TTS. Transitive dependency conflicts on Python 3.11+; excluded from `[all]` — install via `pip install scholium[styletts2]` individually.
 
 ### Source install (advanced)
 
@@ -268,7 +271,7 @@ All `.wav` files in the same directory as `model_path` will be used as condition
 
 **Pros:** Very high quality, very natural prosody, fully local
 
-**Cons:** Slow (minutes per segment on CPU), high VRAM usage; use `preset: fast` and `half: true` to mitigate
+**Cons:** Slow (minutes per segment on CPU), high VRAM usage; use `preset: fast` and `half: true` to mitigate. Transitive dependency conflicts on Python 3.11+; excluded from `[all]` — install via `pip install scholium[tortoise]` individually.
 
 ---
 
