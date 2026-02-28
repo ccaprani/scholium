@@ -3,4 +3,5 @@ pydata-sphinx-theme
 myst-parser
 sphinx-autodoc-typehints
 pillow
+pilmoji
 pdf2image

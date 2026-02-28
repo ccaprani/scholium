@@ -5,7 +5,9 @@ Run from the project root:
     python docs/demo/make_gif.py
 
 Output: docs/demo/demo.gif
-Requires: Pillow  (pip install pillow)
+Requires: Pillow, pilmoji  (pip install pillow pilmoji)
+  pilmoji is needed for emoji rendering (not installed by default in the
+  scholium env — run `pip install pilmoji` once if regenerating the GIF).
 """
 
 from PIL import Image, ImageDraw, ImageFont
