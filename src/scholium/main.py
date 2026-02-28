@@ -14,6 +14,23 @@ from scholium.tts_engine import TTSEngine
 from scholium.video_generator import VideoGenerator
 
 
+# ── Terminal symbols ──────────────────────────────────────────────────────────
+# Graceful fallback for non-UTF-8 terminals (e.g. Windows CMD with cp1252)
+_UTF8 = getattr(sys.stdout, "encoding", "ascii").casefold().replace("-", "") in ("utf8",)
+
+_CHK  = "✔"  if _UTF8 else "+"    # check mark (installed / sub-item done)
+_OK   = "✅" if _UTF8 else "OK"   # top-level success
+_WARN = "⚠"  if _UTF8 else "!!"  # warning
+_BULL = "•"  if _UTF8 else "-"    # list bullet
+_NO   = "✗"  if _UTF8 else "x"   # not installed / not found
+
+
+def _icon(emoji: str) -> str:
+    """Return emoji on UTF-8 terminals, ">>" on ASCII-only terminals."""
+    return emoji if _UTF8 else ">>"
+
+
+
 @click.group()
 @click.version_option()
 def cli():
@@ -44,7 +61,7 @@ def train_voice(name, provider, sample, description, language, config):
     voice_manager = VoiceManager(cfg.get("voices_dir"))
     sample_path = Path(sample).resolve()
 
-    click.echo(f"Ã°Å¸Å½Â¤ Training {provider} voice '{name}' from {sample_path.name}")
+    click.echo(f"{_icon('🎤')} Training {provider} voice '{name}' from {sample_path.name}")
     click.echo(f"   Voices directory: {cfg.get('voices_dir')}")
     click.echo("   This may take a few minutes...")
 
@@ -66,7 +83,7 @@ def train_voice(name, provider, sample, description, language, config):
         dest_sample = voice_dir_path / "sample.wav"
         shutil.copy2(sample_path, dest_sample)
 
-        click.echo(f"   ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Copied sample to {dest_sample}")
+        click.echo(f"   {_CHK} Copied sample to {dest_sample}")
 
         # Pre-compute and save speaker embeddings for faster generation
         click.echo(f"   Computing speaker embeddings (this speeds up future generations)...")
@@ -94,16 +111,16 @@ def train_voice(name, provider, sample, description, language, config):
                     embeddings_path,
                 )
 
-                click.echo(f"   âœ“ Speaker embeddings saved to {embeddings_path}")
+                click.echo(f"   {_CHK} Speaker embeddings saved to {embeddings_path}")
             else:
-                click.echo(f"   âš ï¸  Model doesn't support embedding pre-computation")
+                click.echo(f"   {_WARN}  Model doesn't support embedding pre-computation")
                 click.echo(f"   Embeddings will be computed on each use")
 
         except Exception as e:
-            click.echo(f"   âš ï¸  Could not pre-compute embeddings: {e}")
+            click.echo(f"   {_WARN}  Could not pre-compute embeddings: {e}")
             click.echo(f"   Embeddings will be computed on first use instead")
 
-        click.echo(f"âœ… Coqui voice '{name}' created successfully!")
+        click.echo(f"{_OK} Coqui voice '{name}' created successfully!")
         click.echo(f"   Voice directory: {voice_dir}")
         click.echo(f"   Sample audio: {dest_sample}")
         click.echo(f"   Coqui XTTS will use this sample for zero-shot voice cloning.")
@@ -123,8 +140,8 @@ def train_voice(name, provider, sample, description, language, config):
         voice_dir_path = Path(voice_dir)
         dest_sample = voice_dir_path / "sample.wav"
         shutil.copy2(sample_path, dest_sample)
-        click.echo(f"   ✔ Copied sample to {dest_sample}")
-        click.echo(f"✅ F5-TTS voice '{name}' created successfully!")
+        click.echo(f"   {_CHK} Copied sample to {dest_sample}")
+        click.echo(f"{_OK} F5-TTS voice '{name}' created successfully!")
         click.echo(f"   For best results, also create a ref_text.txt in {voice_dir_path}")
         click.echo(f"   containing a transcript of the reference audio.")
         click.echo(f"\nYou can now use this voice with:")
@@ -142,8 +159,8 @@ def train_voice(name, provider, sample, description, language, config):
         voice_dir_path = Path(voice_dir)
         dest_sample = voice_dir_path / "sample.wav"
         shutil.copy2(sample_path, dest_sample)
-        click.echo(f"   ✔ Copied sample to {dest_sample}")
-        click.echo(f"✅ StyleTTS2 voice '{name}' created successfully!")
+        click.echo(f"   {_CHK} Copied sample to {dest_sample}")
+        click.echo(f"{_OK} StyleTTS2 voice '{name}' created successfully!")
         click.echo(f"\nYou can now use this voice with:")
         click.echo(f"   scholium generate slides.md output.mp4 --provider styletts2 --voice {name}")
 
@@ -160,8 +177,8 @@ def train_voice(name, provider, sample, description, language, config):
         voice_dir_path = Path(voice_dir)
         dest_sample = voice_dir_path / "sample.wav"
         shutil.copy2(sample_path, dest_sample)
-        click.echo(f"   ✔ Copied sample to {dest_sample}")
-        click.echo(f"✅ Tortoise voice '{name}' created successfully!")
+        click.echo(f"   {_CHK} Copied sample to {dest_sample}")
+        click.echo(f"{_OK} Tortoise voice '{name}' created successfully!")
         click.echo(f"   Tip: Add more short clips (sample_2.wav, sample_3.wav …) to")
         click.echo(f"   {voice_dir_path} for better voice cloning quality.")
         click.echo(f"\nYou can now use this voice with:")
@@ -202,7 +219,7 @@ def regenerate_embeddings(voice, config):
     if not sample_path.exists():
         raise click.ClickException(f"Sample audio not found: {sample_path}")
 
-    click.echo(f"ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Å¾ Regenerating embeddings for voice '{voice}'...")
+    click.echo(f"{_icon('🔄')} Regenerating embeddings for voice '{voice}'...")
     click.echo(f"   Voice directory: {voice_dir}")
     click.echo(f"   Sample: {sample_path}")
 
@@ -232,8 +249,8 @@ def regenerate_embeddings(voice, config):
             embeddings_path,
         )
 
-        click.echo(f"   ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Embeddings saved to: {embeddings_path}")
-        click.echo(f"Ã¢Å“â€¦ Embeddings regenerated successfully!")
+        click.echo(f"   {_CHK} Embeddings saved to: {embeddings_path}")
+        click.echo(f"{_OK} Embeddings regenerated successfully!")
         click.echo(f"\nThis voice will now generate audio much faster!")
 
     except Exception as e:
@@ -328,7 +345,7 @@ def list_providers():
         },
     }
 
-    click.echo("\nðŸ“Š TTS Providers:\n")
+    click.echo(f"\n{_icon('📊')} TTS Providers:\n")
 
     installed_count = 0
     for provider_name, info in provider_info.items():
@@ -372,7 +389,7 @@ def list_providers():
             installed = False
 
         if installed:
-            click.echo(f"  ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ {provider_name:12s} - INSTALLED")
+            click.echo(f"  {_CHK} {provider_name:12s} - INSTALLED")
             click.echo(f"      Type: {info['type']}")
             click.echo(f"      Quality: {info['quality']}")
             click.echo(f"      Speed: {info['speed']}")
@@ -384,7 +401,7 @@ def list_providers():
                 click.echo(f"      Notes: {info['notes']}")
             installed_count += 1
         else:
-            click.echo(f"  ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ {provider_name:12s} - NOT INSTALLED")
+            click.echo(f"  {_NO} {provider_name:12s} - NOT INSTALLED")
             click.echo(f"      Install with: {info['install']}")
 
         click.echo()
@@ -505,7 +522,7 @@ def provider_info(provider_name):
     }
 
     if provider_name not in provider_details:
-        click.echo(f"ÃƒÂ¢Ã‚ÂÃ…â€™ Unknown provider: {provider_name}")
+        click.echo(f"{_NO} Unknown provider: {provider_name}")
         click.echo(f"\nAvailable providers: {', '.join(provider_details.keys())}")
         return
 
@@ -550,8 +567,8 @@ def provider_info(provider_name):
 
     info = provider_details[provider_name]
 
-    click.echo(f"\nÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¢ {info['name']}\n")
-    click.echo(f"  Status: {'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ INSTALLED' if installed else 'ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ NOT INSTALLED'}")
+    click.echo(f"\n{_icon('🔎')} {info['name']}\n")
+    click.echo(f"  Status: {_CHK + ' INSTALLED' if installed else _NO + ' NOT INSTALLED'}")
     click.echo(f"  Type: {info['type']}")
     click.echo(f"  Quality: {info['quality']}")
     click.echo(f"  Speed: {info['speed']}")
@@ -663,11 +680,11 @@ def list_voices(provider, config):
             metadata = voice_manager.get_voice_metadata(voice)
             prov = metadata.get("provider", "unknown")
             desc = metadata.get("description", "No description")
-            click.echo(f"  • {voice}")
+            click.echo(f"  {_BULL} {voice}")
             click.echo(f"    Provider: {prov}")
             click.echo(f"    Description: {desc}")
         except Exception as e:
-            click.echo(f"  • {voice} (error loading metadata: {e})")
+            click.echo(f"  {_BULL} {voice} (error loading metadata: {e})")
 
 
 def _list_piper_voices():
@@ -869,10 +886,10 @@ def generate(
     is_verbose = cfg.get("verbose")
 
     if is_verbose:
-        click.echo(f"ðŸ“„ Slides: {slides_md}")
-        click.echo(f"ðŸŽ¬ Output: {output_mp4}")
-        click.echo(f"ðŸŽ¤ Voice: {cfg.get('voice')}")
-        click.echo(f"ðŸ“Š TTS Provider: {cfg.get('tts_provider')}")
+        click.echo(f"{_icon('📄')} Slides: {slides_md}")
+        click.echo(f"{_icon('🎬')} Output: {output_mp4}")
+        click.echo(f"{_icon('🎤')} Voice: {cfg.get('voice')}")
+        click.echo(f"{_icon('📊')} TTS Provider: {cfg.get('tts_provider')}")
 
     try:
         # Initialize components
@@ -881,7 +898,7 @@ def generate(
 
         # Step 1: Process slides
         if is_verbose:
-            click.echo("\nðŸ”¨ Processing slides...")
+            click.echo(f"\n{_icon('🔨')} Processing slides...")
 
         slide_processor = SlideProcessor(
             pandoc_template=cfg.get("pandoc_template"), resolution=tuple(cfg.get("resolution"))
@@ -891,7 +908,7 @@ def generate(
         slide_images = slide_processor.process(slides_md, str(slides_output_dir))
 
         if is_verbose:
-            click.echo(f"   âœ“ Generated {len(slide_images)} slides")
+            click.echo(f"   {_CHK} Generated {len(slide_images)} slides")
 
         # Save slides as PDF in output directory (unless --no-pdf)
         output_path = Path(output_mp4)
@@ -932,15 +949,15 @@ def generate(
                     img.close()
 
                 if is_verbose:
-                    click.echo(f"   âœ“ Saved slides PDF: {slides_pdf_path}")
+                    click.echo(f"   {_CHK} Saved slides PDF: {slides_pdf_path}")
 
             except Exception as e:
                 if is_verbose:
-                    click.echo(f"   âš ï¸  Warning: Could not create slides PDF: {e}")
+                    click.echo(f"   {_WARN}  Warning: Could not create slides PDF: {e}")
 
         # Step 2: Parse narration from embedded notes
         if is_verbose:
-            click.echo("\nðŸ“– Parsing narration...")
+            click.echo(f"\n{_icon('📖')} Parsing narration...")
 
         from .unified_parser import UnifiedParser, validate_slides
 
@@ -950,11 +967,11 @@ def generate(
         if is_verbose:
             slides_with_narration = sum(1 for s in slides if s.has_narration)
             slides_without_narration = len(slides) - slides_with_narration
-            click.echo(f"   âœ“ Parsed {len(slides)} slides from markdown")
-            click.echo(f"     â€¢ {slides_with_narration} with narration")
+            click.echo(f"   {_CHK} Parsed {len(slides)} slides from markdown")
+            click.echo(f"     {_BULL} {slides_with_narration} with narration")
             if slides_without_narration > 0:
                 click.echo(
-                    f"     â€¢ {slides_without_narration} without narration (will show for {cfg.get('timing.min_slide_duration', 3.0)}s)"
+                    f"     {_BULL} {slides_without_narration} without narration (will show for {cfg.get('timing.min_slide_duration', 3.0)}s)"
                 )
 
         # Expand slides into segments
@@ -1009,15 +1026,15 @@ def generate(
         if is_verbose:
             narrated_segments = sum(1 for s in segments if s["text"].strip())
             silent_segments = len(segments) - narrated_segments
-            click.echo(f"   âœ“ Generated {len(segments)} segments:")
-            click.echo(f"     â€¢ {narrated_segments} with narration")
+            click.echo(f"   {_CHK} Generated {len(segments)} segments:")
+            click.echo(f"     {_BULL} {narrated_segments} with narration")
             if silent_segments > 0:
-                click.echo(f"     â€¢ {silent_segments} silent (section/TOC slides)")
-            click.echo(f"     â€¢ Total video pages: {len(slide_images)}")
+                click.echo(f"     {_BULL} {silent_segments} silent (section/TOC slides)")
+            click.echo(f"     {_BULL} Total video pages: {len(slide_images)}")
 
         # Step 3: Load voice and generate audio
         if is_verbose:
-            click.echo("\nðŸŽ¤ Generating audio...")
+            click.echo(f"\n{_icon('🎤')} Generating audio...")
 
         voice_manager = VoiceManager(cfg.get("voices_dir"))
         voice_name = cfg.get("voice")
@@ -1077,13 +1094,13 @@ def generate(
         total_duration = sum(s["duration"] for s in segments_with_audio)
         if is_verbose:
             click.echo(
-                f"   âœ“ Generated {len(segments_with_audio)} audio segments ({total_duration:.1f}s total)"
+                f"   {_CHK} Generated {len(segments_with_audio)} audio segments ({total_duration:.1f}s total)"
             )
 
         # Step 4: Generate video (unless --audio-only)
         if not audio_only:
             if is_verbose:
-                click.echo("\nðŸŽ¬ Generating video...")
+                click.echo(f"\n{_icon('🎬')} Generating video...")
 
             video_generator = VideoGenerator(
                 resolution=tuple(cfg.get("resolution")), fps=cfg.get("fps")
@@ -1098,34 +1115,34 @@ def generate(
             )
 
             if is_verbose:
-                click.echo(f"   âœ“ Video saved to {output_mp4}")
+                click.echo(f"   {_CHK} Video saved to {output_mp4}")
         else:
             if is_verbose:
-                click.echo(f"\nâ­ï¸  Skipping video generation (--audio-only)")
+                click.echo(f"\n{_icon('⏭')}  Skipping video generation (--audio-only)")
 
         # Cleanup
         if not cfg.get("keep_temp_files"):
             if is_verbose:
-                click.echo("\nðŸ§¹ Cleaning up temporary files...")
+                click.echo(f"\n{_icon('🧹')} Cleaning up temporary files...")
             shutil.rmtree(temp_dir, ignore_errors=True)
         else:
             if is_verbose:
-                click.echo(f"\nðŸ“  Temporary files kept in {temp_dir}")
+                click.echo(f"\n{_icon('📁')}  Temporary files kept in {temp_dir}")
 
         # Success message
         if audio_only:
             audio_dir = temp_dir / "audio" if cfg.get("keep_temp_files") else output_dir / "audio"
-            click.echo(f"\nâœ… Success! Audio generated in {audio_dir}")
+            click.echo(f"\n{_OK} Success! Audio generated in {audio_dir}")
         else:
-            click.echo(f"\nâœ… Success! Video generated: {output_mp4}")
+            click.echo(f"\n{_OK} Success! Video generated: {output_mp4}")
 
         if not no_pdf and slides_pdf_path.exists():
-            click.echo(f"ðŸ“„ Slides PDF: {slides_pdf_path}")
+            click.echo(f"{_icon('📄')} Slides PDF: {slides_pdf_path}")
 
         # Post-generation actions
         if play and not audio_only:
             if is_verbose:
-                click.echo(f"\nâ–¶ï¸  Playing video...")
+                click.echo(f"\n{_icon('▶')}  Playing video...")
             try:
                 import platform
                 import subprocess
@@ -1138,11 +1155,11 @@ def generate(
                 else:  # Linux
                     subprocess.run(["xdg-open", str(output_mp4)])
             except Exception as e:
-                click.echo(f"âš ï¸  Could not play video: {e}")
+                click.echo(f"{_WARN}  Could not play video: {e}")
 
         if open_dir:
             if is_verbose:
-                click.echo(f"\nðŸ“‚ Opening output directory...")
+                click.echo(f"\n{_icon('📂')} Opening output directory...")
             try:
                 import platform
                 import subprocess
@@ -1155,7 +1172,7 @@ def generate(
                 else:  # Linux
                     subprocess.run(["xdg-open", str(output_dir)])
             except Exception as e:
-                click.echo(f"âš ï¸  Could not open directory: {e}")
+                click.echo(f"{_WARN}  Could not open directory: {e}")
 
     except Exception as e:
         raise click.ClickException(str(e))
