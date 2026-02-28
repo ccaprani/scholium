@@ -3,7 +3,12 @@
 # Try to import each provider
 # If not installed, set to None
 
-__version__ = "0.1.0"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("scholium")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 try:
     from .piper import PiperProvider

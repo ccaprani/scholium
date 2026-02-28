@@ -15,7 +15,7 @@ from scholium.video_generator import VideoGenerator
 
 
 @click.group()
-@click.version_option(version="0.1.0")
+@click.version_option()
 def cli():
     """Scholium - Automated instructional video generation from markdown."""
     pass

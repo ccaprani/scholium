@@ -3,8 +3,6 @@
 # Try to import each provider
 # If not installed, set to None
 
-__version__ = "0.1.0"
-
 try:
     from .piper import PiperProvider
 except ImportError:

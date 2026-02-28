@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scholium"
-dynamic = ["version"]
+version = "2026.1"
 description = "Generate educational videos from markdown slides with AI voice synthesis"
 requires-python = ">=3.11"
 license = {text = "MIT"}
@@ -112,6 +112,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
+    "build>=1.0.0",
 ]
 
 [project.readme]
@@ -128,9 +129,6 @@ Issues = "https://github.com/ccaprani/scholium/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-
-[tool.setuptools.dynamic]
-version = {attr = "scholium.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
