@@ -50,7 +50,7 @@ export ELEVENLABS_API_KEY="your_key"
 **Cons:** Requires API key, usage-based cost
 
 > ⚠️ Never store your API key in `config.yaml`. Use the `ELEVENLABS_API_KEY` environment variable.
-> For secure, per-environment key storage see [Managing API Keys](installation.md#managing-api-keys).
+> For secure, per-environment key storage see [Managing API Keys](./installation.md#managing-api-keys).
 
 ### Voice ID vs Voice Name
 
@@ -77,7 +77,7 @@ Output:
 ElevenLabs voices (42 total):
   Name                            Voice ID                  Category
   ------------------------------  ------------------------  --------
-  Alice                           Xb7hH8MSUJpSbSDYk0k2     premade
+  Alice                           Xb7hH8MSUJpSbSDYk0k2      premade
   Antoni                          ErXwobaYiN019PkySvjV      premade
   Colin                           ZGuEOd751j7qVTkXR73w      premade
   ...
@@ -139,7 +139,7 @@ scholium generate slides.md output.mp4 --provider openai --voice alloy
 
 **Cons:** Requires API key, usage-based cost, fixed set of voices
 
-> For secure, per-environment key storage see [Managing API Keys](installation.md#managing-api-keys).
+> For secure, per-environment key storage see [Managing API Keys](./installation.md#managing-api-keys).
 
 Available voices: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
 

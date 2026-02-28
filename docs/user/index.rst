@@ -12,3 +12,4 @@ How to write slides with embedded narration, control timing, and choose a TTS pr
    timing-control
    tts-providers
    voice_storage
+   demo

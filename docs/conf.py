@@ -81,6 +81,7 @@ myst_enable_extensions = [
     "colon_fence",
     "deflist",
 ]
+myst_heading_anchors = 3  # auto-generate HTML ids for H1–H3, enabling #slug links
 
 # Intersphinx mapping
 intersphinx_mapping = {
@@ -108,6 +109,7 @@ html_theme_options = {
     ],
     "use_edit_page_button": True,
     "navigation_depth": 4,
+    "navigation_with_keys": False,
 }
 
 html_context = {
@@ -122,10 +124,8 @@ html_baseurl = "https://ccaprani.github.io/scholium/"
 
 html_favicon = "_static/favicon.svg"
 
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-# _static: web assets (favicon, CSS, icon PNG)
+# _static: web assets (favicon, icon PNG)
 # brand:   canonical logo SVGs — merged into _static/ at build time
+# demo:    demo GIF and video — contents copied to site root (demo.gif, demo.mp4)
 html_static_path = ["_static", "brand"]
-html_css_files = ["custom.css"]
+html_extra_path = ["demo"]

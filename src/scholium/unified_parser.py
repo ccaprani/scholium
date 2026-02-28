@@ -155,7 +155,7 @@ class UnifiedParser:
         if slide_level == 1:
             # Split on level-1 headings (# only, not ##)
             heading_pattern = r"^# [^#].+$"
-            parts = re.split(f"({heading_pattern})", body, flags=re.MULTILINE)
+            parts = self._fence_aware_split(body, heading_pattern)
 
             # Combine heading + content pairs
             slide_texts = []
@@ -171,7 +171,7 @@ class UnifiedParser:
             # Strategy: First split on #, then split each section's content on ##
 
             section_pattern = r"^# [^#].+$"
-            section_parts = re.split(f"({section_pattern})", body, flags=re.MULTILINE)
+            section_parts = self._fence_aware_split(body, section_pattern)
 
             slide_texts = []
 
@@ -179,9 +179,7 @@ class UnifiedParser:
             if section_parts[0].strip():
                 # Split on ## in pre-section content
                 subsection_pattern = r"^## [^#].+$"
-                pre_parts = re.split(
-                    f"({subsection_pattern})", section_parts[0], flags=re.MULTILINE
-                )
+                pre_parts = self._fence_aware_split(section_parts[0], subsection_pattern)
                 for i in range(1, len(pre_parts), 2):
                     if i + 1 < len(pre_parts):
                         slide_texts.append(pre_parts[i] + "\n" + pre_parts[i + 1])
@@ -198,7 +196,7 @@ class UnifiedParser:
 
                 # Split section content on ##
                 subsection_pattern = r"^## [^#].+$"
-                sub_parts = re.split(f"({subsection_pattern})", section_content, flags=re.MULTILINE)
+                sub_parts = self._fence_aware_split(section_content, subsection_pattern)
 
                 for j in range(1, len(sub_parts), 2):
                     if j + 1 < len(sub_parts):
@@ -232,20 +230,62 @@ class UnifiedParser:
 
         return slides
 
+    def _fence_aware_split(self, text: str, pattern: str) -> List[str]:
+        """Fence-aware replacement for ``re.split(f'({pattern})', text, re.MULTILINE)``.
+
+        Returns the same list format — ``[before, match1, between, match2, …,
+        after]`` — but matches that fall inside a fenced code block are ignored.
+        """
+        masked = self._mask_fenced_blocks(text)
+        matches = list(re.finditer(pattern, masked, flags=re.MULTILINE))
+
+        if not matches:
+            return [text]
+
+        parts: List[str] = []
+        prev_end = 0
+        for match in matches:
+            parts.append(text[prev_end : match.start()])   # text before this heading
+            parts.append(text[match.start() : match.end()])  # the heading itself
+            prev_end = match.end()
+        parts.append(text[prev_end:])  # text after the last heading
+        return parts
+
+    def _mask_fenced_blocks(self, text: str) -> str:
+        """Return a copy of *text* where every character inside a fenced code
+        block (including the fence lines themselves) is replaced with ``'X'``,
+        while newlines are preserved verbatim.
+
+        This keeps character positions identical to the original so that regex
+        match indices found in the masked string can be applied directly to the
+        original string.
+        """
+        fence_re = re.compile(
+            r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?\n(?P=fence)[^\n]*$",
+            re.MULTILINE | re.DOTALL,
+        )
+        return fence_re.sub(lambda m: re.sub(r"[^\n]", "X", m.group(0)), text)
+
     def _extract_notes_block(self, slide_text: str) -> Tuple[str, str]:
         """Extract ::: notes ::: block from slide markdown.
+
+        Fenced code blocks (```...```) are masked before searching so that
+        ::: notes ::: examples inside code blocks are not mistaken for real
+        narration.
 
         Returns:
             (slide_content, notes_text)
         """
-        # Match ::: notes ... :::
-        # More flexible pattern that handles newlines properly
+        # Mask fenced code blocks so ::: notes inside them is invisible
+        masked = self._mask_fenced_blocks(slide_text)
+
         pattern = r"::: notes\s*\n(.*?)\n:::"
-        match = re.search(pattern, slide_text, re.DOTALL | re.IGNORECASE)
+        match = re.search(pattern, masked, re.DOTALL | re.IGNORECASE)
 
         if match:
-            notes = match.group(1).strip()
-            # Remove notes block from content
+            # Extract from the *original* text using positions found in masked
+            # (positions are identical because masking is character-for-character)
+            notes = slide_text[match.start(1) : match.end(1)].strip()
             content = slide_text[: match.start()] + slide_text[match.end() :]
             return content.strip(), notes
 
@@ -368,9 +408,14 @@ class UnifiedParser:
         # Remove only DUR/PRE/POST/MIN from text (keep PAUSE)
         clean_text = re.sub(timing_pattern, "", text, flags=re.IGNORECASE)
 
-        # Clean up extra whitespace that may result from removing directives
-        clean_text = re.sub(r"\s+", " ", clean_text)
-        clean_text = re.sub(r"\n\s*\n\s*\n+", "\n\n", clean_text)
+        # Clean up whitespace left by removing directives.
+        # Only collapse horizontal whitespace (spaces/tabs) — never newlines,
+        # as newlines separate incremental-reveal narration paragraphs.
+        clean_text = re.sub(r"[ \t]+", " ", clean_text)
+        # Remove lines that became blank after directive removal
+        clean_text = re.sub(r"^[ \t]*$", "", clean_text, flags=re.MULTILINE)
+        # Collapse 3+ consecutive newlines to 2 (preserve paragraph breaks)
+        clean_text = re.sub(r"\n{3,}", "\n\n", clean_text)
 
         return clean_text.strip()
 

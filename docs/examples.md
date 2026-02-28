@@ -51,6 +51,8 @@ Deletion is most complex but still logarithmic on average.
 
 ## Mathematics: Calculus
 
+Demonstrates LaTeX math and all four timing directives — `[PRE]`, `[POST]`, `[MIN]`, and inline `[PAUSE]`.
+
 ```markdown
 ---
 title: "The Fundamental Theorem"
@@ -66,12 +68,13 @@ If $f$ is continuous on $[a,b]$, then:
 $$\int_a^b f'(x)\,dx = f(b) - f(a)$$
 
 ::: notes
-[PRE 3s] [MIN 12s]
+[PRE 3s] [MIN 12s] [POST 2s]
 
 The Fundamental Theorem connects differentiation and integration.
-Integration and differentiation are inverse operations.
-This changed mathematics forever.
-Take time to understand both parts.
+[PAUSE 1.5s]
+Integration and differentiation are inverse operations — this changed mathematics forever.
+[PAUSE 2s]
+Take time to absorb both parts of the equation before moving on.
 :::
 ```
 

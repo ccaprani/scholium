@@ -3,11 +3,14 @@ config.local.yaml
 *.key
 *.secret
 
-# Audio/video files
+# Audio/video files (user outputs — not tracked)
 *.mp4
 *.mp3
 *.wav
 *.m4a
+# Exception: committed demo assets in docs/
+!docs/demo/*.mp4
+!docs/demo/*.gif
 output/
 
 tags

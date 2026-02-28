@@ -18,7 +18,7 @@ For other TTS providers, see [TTS Providers](tts-providers.md).
 
 Create `lecture.md`:
 
-```markdown
+````markdown
 ---
 title: "Python Variables"
 title_notes: |
@@ -56,7 +56,7 @@ Integers store whole numbers.
 
 Floats store decimal numbers.
 :::
-```
+````
 
 ### Step 2: Generate Video
 
@@ -112,4 +112,4 @@ See [Timing Control](timing-control.md) for details.
 - [Markdown Format](markdown-format.md) — Complete syntax guide
 - [Narration Format](narration-format.md) — Narration details
 - [Incremental Lists](incremental-lists.md) — Bullet-by-bullet reveals
-- [Examples](examples.md) — Full lecture examples
+- [Examples](../examples.md) — Full lecture examples

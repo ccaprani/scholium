@@ -1,5 +1,6 @@
 """Slide processing: Markdown → PDF → Images."""
 
+import os
 import subprocess
 from pathlib import Path
 from typing import List
@@ -45,8 +46,14 @@ class SlideProcessor:
         # Build pandoc command
         cmd = ["pandoc", str(markdown_path), "-t", self.pandoc_template, "-o", str(output_path)]
 
+        # Add the markdown file's directory to TEXINPUTS so pdflatex can find
+        # images referenced in header-includes and other LaTeX header blocks.
+        env = os.environ.copy()
+        src_dir = str(markdown_path.parent.resolve())
+        env["TEXINPUTS"] = src_dir + os.pathsep + env.get("TEXINPUTS", "")
+
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
             return str(output_path)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Pandoc conversion failed: {e.stderr}")

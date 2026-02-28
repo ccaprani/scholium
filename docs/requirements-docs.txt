@@ -2,3 +2,5 @@ sphinx>=5.0
 pydata-sphinx-theme
 myst-parser
 sphinx-autodoc-typehints
+pillow
+pdf2image

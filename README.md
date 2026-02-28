@@ -18,6 +18,16 @@
 
 Convert markdown slides with embedded narration into professional videos. Perfect for flipped classroom content, lecture recordings, and maintaining course libraries.
 
+<p align="center">
+  <img src="https://ccaprani.github.io/scholium/demo.gif"
+       alt="Scholium terminal demo — generating a narrated video from markdown"
+       width="100%">
+</p>
+
+<p align="center">
+  <a href="https://ccaprani.github.io/scholium/demo.mp4">▶ Watch the output video</a>
+</p>
+
 ---
 
 ## Quick Start

@@ -199,6 +199,47 @@ class TestUnifiedParser:
         assert notes == ""
         assert "Slide body." in content
 
+    def test_extract_notes_block_ignores_fenced_code(self):
+        """A ::: notes block inside a fenced code example is not parsed as narration."""
+        parser = UnifiedParser()
+        slide_text = (
+            "# The Format\n\n"
+            "```markdown\n"
+            "::: notes\n"
+            "This is an example, not real narration.\n"
+            ":::\n"
+            "```\n\n"
+            "::: notes\n"
+            "Real narration.\n"
+            ":::\n"
+        )
+        content, notes = parser._extract_notes_block(slide_text)
+        assert notes == "Real narration."
+        assert "Real narration." not in content    # real notes block removed from content
+        assert "```markdown" in content            # fenced block preserved in content
+        assert "This is an example" in content     # example code preserved in content
+
+    def test_parse_body_ignores_heading_inside_fenced_code(self):
+        """A # heading inside a fenced code block must not create an extra slide."""
+        parser = UnifiedParser()
+        body = (
+            "# The Format\n\n"
+            "```markdown\n"
+            "# Slide Title\n\n"
+            "content\n"
+            "```\n\n"
+            "::: notes\n"
+            "Real narration.\n"
+            ":::\n\n"
+            "# Next Slide\n\n"
+            "content\n"
+        )
+        slides = parser._parse_body_slides(body, slide_level=1, start_index=0)
+        assert len(slides) == 2
+        assert slides[0].markdown_content.startswith("# The Format")
+        assert slides[0].narration_segments == ["Real narration."]
+        assert slides[1].markdown_content.startswith("# Next Slide")
+
     # --- timing directives ---
 
     def test_timing_directives_extracted(self, test_slides_path):
@@ -232,6 +273,19 @@ class TestUnifiedParser:
         assert "Hello world." in clean
         assert metadata["pre_delay"] == 2.0
         assert metadata["post_delay"] == 3.0
+
+    def test_timing_directives_preserve_paragraph_breaks(self):
+        """Removing timing directives must not collapse multi-paragraph narration."""
+        parser = UnifiedParser()
+        text = "[PRE 1s]\nFirst paragraph.\n\nSecond paragraph.\n[POST 2s]"
+        metadata = {}
+        clean = parser._extract_timing_directives(text, metadata)
+        assert "First paragraph." in clean
+        assert "Second paragraph." in clean
+        # Paragraphs must still be separated by a blank line
+        assert "\n\n" in clean
+        assert metadata["pre_delay"] == 1.0
+        assert metadata["post_delay"] == 2.0
 
     # --- [PAUSE] directives ---
 

@@ -1,13 +1,17 @@
+.. raw:: html
+
+   <style>article h1:first-of-type { display: none; }</style>
+
 Scholium Documentation
 ======================
 
-.. image:: _static/logo-horizontal.svg
+.. image:: brand/logo-horizontal.svg
    :width: 70%
    :align: center
    :alt: Scholium — narrated video from markdown slides
    :class: only-light
 
-.. image:: _static/logo-horizontal-dark.svg
+.. image:: brand/logo-horizontal-dark.svg
    :width: 70%
    :align: center
    :alt: Scholium — narrated video from markdown slides
@@ -16,6 +20,14 @@ Scholium Documentation
 |
 
 **Automated instructional video generation from markdown slides with embedded narration.**
+
+.. raw:: html
+
+   <div style="margin: 1.5em auto; max-width: 860px;">
+     <video controls width="100%" style="border-radius: 8px; display: block;">
+       <source src="demo.mp4" type="video/mp4">
+     </video>
+   </div>
 
 .. epigraph::
 

@@ -27,7 +27,24 @@ pytest --cov=src --cov=tts_providers
 
 ```bash
 cd docs
+pip install -r requirements-docs.txt   # first time only
 make html
+```
+
+### Regenerate Demo Assets
+
+The demo video and GIF (`docs/demo/demo.mp4`, `docs/demo/demo.gif`) are committed
+assets — they are **not** rebuilt automatically by `make html`. Regenerate them
+manually after changing `docs/demo/lecture.md` or `docs/demo/make_gif.py`,
+then rebuild the HTML docs to pick up the new files.
+
+```bash
+# Requires the runtime environment (Piper TTS installed)
+bash docs/demo/build_demo.sh          # video + GIF (~30 s)
+bash docs/demo/build_demo.sh --gif-only  # GIF only (fast, no TTS)
+
+# Then rebuild docs
+cd docs && make html
 ```
 
 ## Ways to Contribute
