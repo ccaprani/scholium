@@ -95,6 +95,10 @@ intersphinx_mapping = {
 html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
+    "logo": {
+        "image_light": "_static/logo-horizontal.svg",
+        "image_dark": "_static/logo-horizontal-dark-navbar.svg",
+    },
     "icon_links": [
         {
             "name": "GitHub",
@@ -116,11 +120,12 @@ html_context = {
 # GitHub Pages configuration
 html_baseurl = "https://ccaprani.github.io/scholium/"
 
-# The name of an image file (relative to this directory) to place at the top
-# of the sidebar.
-# html_logo = "./images/scholium_logo.png"
+html_favicon = "_static/favicon.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+# _static: web assets (favicon, CSS, icon PNG)
+# brand:   canonical logo SVGs — merged into _static/ at build time
+html_static_path = ["_static", "brand"]
+html_css_files = ["custom.css"]

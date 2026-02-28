@@ -1,6 +1,6 @@
-# TTS Providers
+# TTS (Text-to-Speech) Providers
 
-Scholium supports eight text-to-speech providers spanning cloud APIs, fixed local voices, and zero-shot local voice cloning.
+Scholium supports eight text-to-speech (TTS) providers spanning cloud APIs, fixed local voices, and zero-shot local voice cloning. TTS engines convert the narration text in your `:::notes:::` blocks into spoken audio.
 
 ## Provider Comparison
 
@@ -50,6 +50,7 @@ export ELEVENLABS_API_KEY="your_key"
 **Cons:** Requires API key, usage-based cost
 
 > ⚠️ Never store your API key in `config.yaml`. Use the `ELEVENLABS_API_KEY` environment variable.
+> For secure, per-environment key storage see [Managing API Keys](installation.md#managing-api-keys).
 
 ### Voice ID vs Voice Name
 
@@ -137,6 +138,8 @@ scholium generate slides.md output.mp4 --provider openai --voice alloy
 **Pros:** Good quality, low latency, simple setup
 
 **Cons:** Requires API key, usage-based cost, fixed set of voices
+
+> For secure, per-environment key storage see [Managing API Keys](installation.md#managing-api-keys).
 
 Available voices: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
 

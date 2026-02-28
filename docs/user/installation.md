@@ -51,9 +51,9 @@ choco install pandoc miktex ffmpeg python311
 
 ## Install Scholium
 
-### Choose TTS Provider
+### Choose a TTS Provider
 
-Scholium supports multiple TTS engines. For your first installation, we recommend **Piper**:
+Scholium uses a text-to-speech (TTS) engine to convert the narration in your slides into spoken audio. Several engines are supported — for your first installation, we recommend **Piper**:
 
 ```bash
 # Recommended: Piper (fast, local, no API key)
@@ -121,14 +121,10 @@ No additional setup needed! Voices download automatically on first use.
 
 ### ElevenLabs
 
-Get an API key from <https://elevenlabs.io>:
+Get an API key from <https://elevenlabs.io>, then set `ELEVENLABS_API_KEY` in your environment — see [Managing API Keys](#managing-api-keys) below.
 
 ```bash
 export ELEVENLABS_API_KEY="your_key_here"
-
-# Make permanent (Linux/macOS)
-echo 'export ELEVENLABS_API_KEY="your_key"' >> ~/.bashrc
-source ~/.bashrc
 ```
 
 ### Coqui
@@ -144,19 +140,68 @@ scholium train-voice \
 
 ### OpenAI
 
-Get an API key from <https://platform.openai.com>:
+Get an API key from <https://platform.openai.com>, then set `OPENAI_API_KEY` in your environment — see [Managing API Keys](#managing-api-keys) below.
 
 ```bash
 export OPENAI_API_KEY="your_key_here"
-
-# Make permanent
-echo 'export OPENAI_API_KEY="your_key"' >> ~/.bashrc
-source ~/.bashrc
 ```
 
 ### Bark
 
 No additional setup. First generation downloads models (~1.5 GB).
+
+## Managing API Keys
+
+Cloud providers (ElevenLabs, OpenAI) require an API key set as an environment variable. Storing keys **per environment** keeps them scoped to the project and avoids leaking them into every shell session.
+
+### conda
+
+```bash
+# Set keys for the active conda environment
+conda env config vars set ELEVENLABS_API_KEY="your_key_here"
+conda env config vars set OPENAI_API_KEY="your_key_here"
+
+# Reactivate so the variables take effect
+conda deactivate
+conda activate <env-name>
+
+# Verify
+echo $ELEVENLABS_API_KEY
+```
+
+Keys are stored in the conda environment's metadata and are only active when that environment is active.
+
+### venv
+
+Add exports to the end of the activation script so they are set automatically whenever the environment is activated:
+
+```bash
+echo 'export ELEVENLABS_API_KEY="your_key_here"' >> scholium-env/bin/activate
+echo 'export OPENAI_API_KEY="your_key_here"'     >> scholium-env/bin/activate
+```
+
+Then reactivate:
+
+```bash
+source scholium-env/bin/activate
+```
+
+On Windows (`scholium-env\Scripts\activate.bat`), use `SET` instead of `export`:
+
+```bat
+echo SET ELEVENLABS_API_KEY=your_key_here >> scholium-env\Scripts\activate.bat
+```
+
+### Global fallback (not recommended)
+
+Writing keys to `~/.bashrc` or `~/.zshrc` makes them available in every shell session, including unrelated projects. Prefer per-environment storage above; use the global approach only if you have a single project or a shared workstation where isolation is not a concern.
+
+```bash
+echo 'export ELEVENLABS_API_KEY="your_key_here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+> **Never commit API keys to version control.** Add `.env` and any activation script backups to `.gitignore`.
 
 ## Next Steps
 

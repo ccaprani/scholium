@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .bg  { fill: #14181e; }
+    .bar { fill: #459DB9; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #ffffff; }
+    }
+  </style>
+  <rect class="bg" width="512" height="512" rx="80"/>
+  <!-- 5-bar bell-curve waveform centred in the 512×512 canvas -->
+  <rect class="bar" x="76"  y="196" width="60" height="120" rx="30"/>
+  <rect class="bar" x="156" y="136" width="60" height="240" rx="30"/>
+  <rect class="bar" x="236" y="96"  width="60" height="320" rx="30"/>
+  <rect class="bar" x="316" y="136" width="60" height="240" rx="30"/>
+  <rect class="bar" x="396" y="196" width="60" height="120" rx="30"/>
+</svg>

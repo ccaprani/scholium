@@ -1,255 +1,243 @@
-Markdown Format
-===============
+# Markdown Format
 
 Complete reference for Scholium's unified markdown format with embedded narration.
 
-Document Structure
-------------------
+## Document Structure
 
-Every Scholium document has this structure::
+Every Scholium document has this structure:
 
-    ---
-    title: "Lecture Title"
-    author: "Course Name"
-    ---
-    
-    # First Slide
-    
-    Content
-    
-    ::: notes
-    Narration
-    :::
-    
-    # Second Slide
-    
-    More content
-    
-    ::: notes
-    More narration
-    :::
+```markdown
+---
+title: "Lecture Title"
+author: "Course Name"
+---
 
-YAML Frontmatter
-----------------
+# First Slide
 
-Required Fields
-~~~~~~~~~~~~~~~
+Content
 
-::
+::: notes
+Narration
+:::
 
-    ---
-    title: "Your Lecture Title"
-    ---
+# Second Slide
 
-Only ``title`` is required.
+More content
 
-Optional Fields
-~~~~~~~~~~~~~~~
+::: notes
+More narration
+:::
+```
 
-::
+## YAML Frontmatter
 
-    ---
-    title: "Introduction to Algorithms"
-    author: "CS 201"
-    date: "2026-02-06"
-    subtitle: "Big O Notation"
-    institute: "University Name"
-    title_notes: |
-      [DUR 3s]
-      Welcome to the lecture.
-    ---
+### Required Fields
 
-``title_notes``
-   Narration for title slide. Without this, title slide is silent.
+```markdown
+---
+title: "Your Lecture Title"
+---
+```
 
-Creating Slides
----------------
+Only `title` is required.
 
-Level-1 headings create slides::
+### Optional Fields
 
-    # First Slide
-    
-    # Second Slide
-    
-    # Third Slide
+```markdown
+---
+title: "Introduction to Algorithms"
+author: "CS 201"
+date: "2026-02-06"
+subtitle: "Big O Notation"
+institute: "University Name"
+title_notes: |
+  [DUR 3s]
+  Welcome to the lecture.
+---
+```
 
-**Only** ``#`` (level-1) creates slides. Level-2 (``##``) and deeper are content within slides.
+`title_notes` — narration for the title slide. Without this, the title slide is silent.
 
-Slide Content
--------------
+## Creating Slides
 
-Text
-~~~~
+Level-1 headings create slides:
 
-::
+```markdown
+# First Slide
 
-    # Introduction
-    
-    Plain text paragraph.
-    
-    **Bold** and *italic* work.
-    
-    - Regular bullets
-    - Second bullet
+# Second Slide
 
-Code Blocks
-~~~~~~~~~~~
+# Third Slide
+```
 
-::
+**Only** `#` (level-1) creates slides. Level-2 (`##`) and deeper are content within slides.
 
-    # Python Example
-    
-    ```python
-    def factorial(n):
-        if n <= 1:
-            return 1
-        return n * factorial(n - 1)
-    ```
+## Slide Content
 
-Images
-~~~~~~
+### Text
 
-::
+```markdown
+# Introduction
 
-    # Architecture
-    
-    ![Diagram caption](images/architecture.png)
+Plain text paragraph.
 
-Math Equations
-~~~~~~~~~~~~~~
+**Bold** and *italic* work.
 
-::
+- Regular bullets
+- Second bullet
+```
 
-    # Quadratic Formula
-    
-    $$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$
+### Code Blocks
 
-Inline: ``$E = mc^2$``
+````markdown
+# Python Example
 
-Tables
-~~~~~~
+```python
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+```
+````
 
-::
+### Images
 
-    | Algorithm | Time | Space |
-    |-----------|------|-------|
-    | Bubble    | O(n²)| O(1)  |
+```markdown
+# Architecture
 
-Notes Blocks
-------------
+![Diagram caption](images/architecture.png)
+```
 
-Basic Syntax
-~~~~~~~~~~~~
+### Math Equations
 
-::
+```markdown
+# Quadratic Formula
 
-    ::: notes
-    Narration text here.
-    Multiple lines allowed.
-    :::
+$$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$
+```
 
-Must be lowercase ``:::notes:::``.
+Inline: `$E = mc^2$`
 
-See :doc:`narration-format` for complete narration syntax.
+### Tables
 
-Lists
------
+```markdown
+| Algorithm | Time | Space |
+|-----------|------|-------|
+| Bubble    | O(n²)| O(1)  |
+```
 
-Regular Lists
-~~~~~~~~~~~~~
+## Notes Blocks
 
-All bullets appear at once::
+### Basic Syntax
 
-    - Point A
-    - Point B
-    - Point C
+```markdown
+::: notes
+Narration text here.
+Multiple lines allowed.
+:::
+```
 
-Incremental Lists
-~~~~~~~~~~~~~~~~~
+Must be lowercase `:::notes:::`.
 
-Bullets reveal one at a time::
+See {doc}`narration-format` for complete narration syntax.
 
-    >- Point A
-    >- Point B
-    >- Point C
+## Lists
 
-See :doc:`incremental-lists` for complete guide.
+### Regular Lists
 
-Complete Example
-----------------
+All bullets appear at once:
 
-::
+```markdown
+- Point A
+- Point B
+- Point C
+```
 
-    ---
-    title: "Binary Search"
-    author: "Algorithms 101"
-    title_notes: |
-      Today we're learning binary search.
-    ---
-    
-    # What is Binary Search?
-    
-    An efficient search algorithm for sorted arrays.
-    
-    Time complexity: **O(log n)**
-    
-    ::: notes
-    [PRE 1s]
-    
-    Binary search is one of the most important algorithms.
-    It works by repeatedly dividing the search space in half.
-    :::
-    
-    # How It Works
-    
-    >- Start with middle element
-    >- If target < middle, search left half
-    >- If target > middle, search right half
-    >- Repeat until found
-    
-    ::: notes
-    Let's understand the algorithm step by step.
-    
-    First, we examine the middle element of the array.
-    
-    If our target is less than the middle, we only need to search the left half.
-    
-    If greater, we search the right half.
-    
-    We repeat this process, halving the search space each time.
-    :::
-    
-    # Implementation
-    
-    ```python
-    def binary_search(arr, target):
-        left, right = 0, len(arr) - 1
-        
-        while left <= right:
-            mid = (left + right) // 2
-            if arr[mid] == target:
-                return mid
-            elif arr[mid] < target:
-                left = mid + 1
-            else:
-                right = mid - 1
-        
-        return -1
-    ```
-    
-    ::: notes
-    [MIN 20s]
-    
-    Here's a Python implementation.
-    We maintain left and right pointers.
-    Each iteration, we calculate the midpoint.
-    We compare and adjust our search range accordingly.
-    Study this code carefully as it's fundamental.
-    :::
+### Incremental Lists
 
-Next Topics
------------
+Bullets reveal one at a time:
 
-* :doc:`narration-format` - Narration syntax
-* :doc:`incremental-lists` - Bullet reveals
-* :doc:`timing-control` - Timing directives
+```markdown
+>- Point A
+>- Point B
+>- Point C
+```
+
+See {doc}`incremental-lists` for complete guide.
+
+## Complete Example
+
+```markdown
+---
+title: "Binary Search"
+author: "Algorithms 101"
+title_notes: |
+  Today we're learning binary search.
+---
+
+# What is Binary Search?
+
+An efficient search algorithm for sorted arrays.
+
+Time complexity: **O(log n)**
+
+::: notes
+[PRE 1s]
+
+Binary search is one of the most important algorithms.
+It works by repeatedly dividing the search space in half.
+:::
+
+# How It Works
+
+>- Start with middle element
+>- If target < middle, search left half
+>- If target > middle, search right half
+>- Repeat until found
+
+::: notes
+Let's understand the algorithm step by step.
+
+First, we examine the middle element of the array.
+
+If our target is less than the middle, we only need to search the left half.
+
+If greater, we search the right half.
+
+We repeat this process, halving the search space each time.
+:::
+
+# Implementation
+
+```python
+def binary_search(arr, target):
+    left, right = 0, len(arr) - 1
+
+    while left <= right:
+        mid = (left + right) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+
+    return -1
+```
+
+::: notes
+[MIN 20s]
+
+Here's a Python implementation.
+We maintain left and right pointers.
+Each iteration, we calculate the midpoint.
+We compare and adjust our search range accordingly.
+Study this code carefully as it's fundamental.
+:::
+```
+
+## See Also
+
+- {doc}`narration-format` — Narration syntax
+- {doc}`incremental-lists` — Bullet reveals
+- {doc}`timing-control` — Timing directives

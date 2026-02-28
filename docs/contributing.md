@@ -1,68 +1,58 @@
-Contributing
-============
+# Contributing
 
 Thank you for considering contributing to Scholium!
 
-Development Setup
------------------
+## Development Setup
 
-Clone and Install
-~~~~~~~~~~~~~~~~~
+### Clone and Install
 
-.. code-block:: bash
+```bash
+git clone https://github.com/ccaprani/scholium.git
+cd scholium
 
-    git clone https://github.com/ccaprani/scholium.git
-    cd scholium
-    
-    python3.11 -m venv venv
-    source venv/bin/activate
-    
-    pip install -e ".[dev,piper]"
+python3.11 -m venv venv
+source venv/bin/activate
 
-Run Tests
-~~~~~~~~~
+pip install -e ".[dev,piper]"
+```
 
-.. code-block:: bash
+### Run Tests
 
-    pytest
-    pytest --cov=src --cov=tts_providers
+```bash
+pytest
+pytest --cov=src --cov=tts_providers
+```
 
-Build Documentation
-~~~~~~~~~~~~~~~~~~~
+### Build Documentation
 
-.. code-block:: bash
+```bash
+cd docs
+make html
+```
 
-    cd docs
-    make html
+## Ways to Contribute
 
-Ways to Contribute
-------------------
+### Documentation
 
-Documentation
-~~~~~~~~~~~~~
+- Fix typos
+- Add examples
+- Clarify confusing sections
+- Add troubleshooting tips
 
-* Fix typos
-* Add examples
-* Clarify confusing sections
-* Add troubleshooting tips
+### Code
 
-Code
-~~~~
+- Fix bugs
+- Implement features
+- Add TTS providers
+- Improve performance
 
-* Fix bugs
-* Implement features
-* Add TTS providers
-* Improve performance
+### Testing
 
-Testing
-~~~~~~~
+- Add test cases
+- Report bugs
+- Test on different platforms
 
-* Add test cases
-* Report bugs
-* Test on different platforms
-
-Pull Request Process
---------------------
+## Pull Request Process
 
 1. Fork repository
 2. Create feature branch
@@ -72,10 +62,9 @@ Pull Request Process
 6. Update documentation
 7. Submit pull request
 
-Code Style
-----------
+## Code Style
 
-* Follow PEP 8
-* Use type hints
-* Add docstrings
-* Keep functions focused
+- Follow PEP 8
+- Use type hints
+- Add docstrings
+- Keep functions focused

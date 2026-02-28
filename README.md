@@ -1,8 +1,20 @@
-# Scholium
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)"  srcset="docs/brand/logo-horizontal-dark-navbar.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/brand/logo-horizontal.svg">
+    <img alt="Scholium" src="docs/brand/logo-horizontal.svg" width="65%">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11+-blue.svg"></a>
+  <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <a href="https://ccaprani.github.io/scholium"><img alt="Docs" src="https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg"></a>
+</p>
 
 **Automated instructional video generation from markdown.**
 
-> *Scholium* (Greek: σχόλιον) - An explanatory note or commentary. Your digital scholium for the modern classroom.
+> *Scholium* (Greek: σχόλιον) — An explanatory note or commentary. Your digital scholium for the modern classroom.
 
 Convert markdown slides with embedded narration into professional videos. Perfect for flipped classroom content, lecture recordings, and maintaining course libraries.
 
@@ -12,33 +24,33 @@ Convert markdown slides with embedded narration into professional videos. Perfec
 
 ```bash
 # 1. Install (requires Python 3.11+, pandoc, ffmpeg)
-pip install scholium[piper]  # Install with Piper TTS (recommended)
+pip install scholium[piper]
 
 # 2. Create a markdown file with embedded narration
 cat > lecture.md << 'EOF'
 ---
-title: "Introduction to Mechanics"
-slide-level: 2  # Use ## for slides, # for sections
+title: "Newton's Laws"
+author: "Physics 101"
+title_notes: |
+  Welcome to today's lecture on Newton's Laws of Motion.
 ---
 
-# Course Overview
+# What Are Newton's Laws?
 
-## Newton's Laws
-
-Newton formulated three fundamental laws of motion.
+Three fundamental principles governing motion.
 
 ::: notes
-Welcome! Today we'll explore Newton's three laws of motion,
-which form the foundation of classical mechanics.
+Newton's three laws form the foundation of classical mechanics.
+Every object in the universe obeys these rules.
 :::
 
-## First Law
+# The First Law
 
-An object in motion stays in motion unless acted upon by force.
+An object in motion stays in motion unless acted upon by a force.
 
 ::: notes
-The first law, also called the law of inertia, tells us that
-objects resist changes to their state of motion.
+This is the law of inertia.
+Objects resist any change to their state of motion.
 :::
 EOF
 
@@ -302,16 +314,19 @@ Each bullet creates a new slide page. Split your narration into paragraphs (sepa
 
 ## TTS Providers
 
-| Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost |
-|----------|------|---------|-------|---------------|---------|------|
-| **Piper** | Local | Medium-High | Fast | ✗ | ✗ | Free |
-| **ElevenLabs** | Cloud | Very High | Fast | ✓ | ✓ | Free tier + paid |
-| **Coqui** | Local | High | Medium | ✓ | ✗ | Free |
-| **OpenAI** | Cloud | High | Fast | ✗ | ✓ | Paid |
-| **Bark** | Local | Very High | Slow | ⚠️ | ✗ | Free |
-| **F5-TTS** | Local | Very High | Fast | ✓ | ✗ | Free |
-| **StyleTTS2** | Local | Very High | Medium | ✓ | ✗ | Free |
-| **Tortoise** | Local | Very High | Slow | ✓ | ✗ | Free |
+| Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost | `[all]` |
+|----------|------|---------|-------|---------------|---------|------|---------|
+| **Piper** | Local | ⭐⭐⭐⭐ | Fast | ❌ | ❌ | Free | ✅ |
+| **ElevenLabs** | Cloud | ⭐⭐⭐⭐⭐ | Fast | ✅ | ✅ | Paid | ✅ |
+| **Coqui** | Local | ⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free | ❌ |
+| **OpenAI** | Cloud | ⭐⭐⭐⭐ | Fast | ❌ | ✅ | Paid | ✅ |
+| **Bark** | Local | ⭐⭐⭐⭐⭐ | Slow | ⚠️ | ❌ | Free | ❌ |
+| **F5-TTS** | Local | ⭐⭐⭐⭐⭐ | Fast | ✅ | ❌ | Free | ✅ |
+| **StyleTTS2** | Local | ⭐⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free | ❌ |
+| **Tortoise** | Local | ⭐⭐⭐⭐⭐ | Slow | ✅ | ❌ | Free | ❌ |
+
+> `pip install scholium[all]` installs only the four ✅ providers (Piper, ElevenLabs, OpenAI, F5-TTS).
+> Coqui, Bark, StyleTTS2, and Tortoise have transitive dependency conflicts on Python 3.11+ — install individually.
 
 ### Piper (Recommended)
 
@@ -561,10 +576,14 @@ See the `examples/` directory for:
 
 ## Documentation
 
-- **Full docs**: https://ccaprani.github.io/scholium
-- **Examples**: `examples/` directory
-- **Issues**: GitHub Issues
-- **API reference**: Run `scholium --help`
+- **Full docs**: <https://ccaprani.github.io/scholium>
+  - [Getting Started](https://ccaprani.github.io/scholium/user/installation.html)
+  - [Markdown Format](https://ccaprani.github.io/scholium/user/markdown-format.html)
+  - [TTS Providers](https://ccaprani.github.io/scholium/user/tts-providers.html)
+  - [CLI Reference](https://ccaprani.github.io/scholium/user/cli.html)
+- **Examples**: `examples/` directory in this repo
+- **Issues**: [GitHub Issues](https://github.com/ccaprani/scholium/issues)
+- **API reference**: `scholium --help`
 
 ---
 

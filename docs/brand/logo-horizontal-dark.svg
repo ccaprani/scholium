@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300">
+  <!-- No background rect: page background shows through for a seamless match -->
+  <!-- Monitor screen frame -->
+  <rect x="10" y="65" width="190" height="170" rx="14" fill="none" stroke="#ffffff" stroke-width="9"/>
+  <!-- Slide content inside screen -->
+  <!-- Title bar -->
+  <rect x="28" y="88" width="152" height="14" rx="5" fill="#ffffff"/>
+  <!-- Bullet 1 -->
+  <circle cx="42" cy="120" r="7" fill="#ffffff"/>
+  <rect x="58" y="115" width="112" height="10" rx="5" fill="#ffffff"/>
+  <!-- Bullet 2 -->
+  <circle cx="42" cy="148" r="7" fill="#ffffff"/>
+  <rect x="58" y="143" width="105" height="10" rx="5" fill="#ffffff"/>
+  <!-- Bullet 3 -->
+  <circle cx="42" cy="176" r="7" fill="#ffffff"/>
+  <rect x="58" y="171" width="88" height="10" rx="5" fill="#ffffff"/>
+  <!-- Monitor stand -->
+  <rect x="96" y="235" width="18" height="34" rx="2" fill="#ffffff"/>
+  <!-- Monitor base -->
+  <rect x="61" y="269" width="88" height="12" rx="6" fill="#ffffff"/>
+  <!-- Connector: monitor to waveform -->
+  <rect x="203" y="146" width="28" height="8" rx="4" fill="#ffffff"/>
+  <!-- Waveform: 11 bars, teal, centred at y=150 -->
+  <rect x="236" y="130" width="14" height="40"  rx="6" fill="#459DB9"/>
+  <rect x="256" y="110" width="14" height="80"  rx="6" fill="#459DB9"/>
+  <rect x="276" y="85"  width="14" height="130" rx="6" fill="#459DB9"/>
+  <rect x="296" y="65"  width="14" height="170" rx="6" fill="#459DB9"/>
+  <rect x="316" y="50"  width="14" height="200" rx="6" fill="#459DB9"/>
+  <rect x="336" y="40"  width="14" height="220" rx="6" fill="#459DB9"/>
+  <rect x="356" y="50"  width="14" height="200" rx="6" fill="#459DB9"/>
+  <rect x="376" y="65"  width="14" height="170" rx="6" fill="#459DB9"/>
+  <rect x="396" y="85"  width="14" height="130" rx="6" fill="#459DB9"/>
+  <rect x="416" y="110" width="14" height="80"  rx="6" fill="#459DB9"/>
+  <rect x="436" y="130" width="14" height="40"  rx="6" fill="#459DB9"/>
+  <!-- Wordmark -->
+  <text x="468" y="185" font-family="DejaVu Sans, Arial" font-size="100" fill="#ffffff">Scholium</text>
+</svg>

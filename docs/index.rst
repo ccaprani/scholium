@@ -1,7 +1,26 @@
 Scholium Documentation
 ======================
 
+.. image:: _static/logo-horizontal.svg
+   :width: 70%
+   :align: center
+   :alt: Scholium — narrated video from markdown slides
+   :class: only-light
+
+.. image:: _static/logo-horizontal-dark.svg
+   :width: 70%
+   :align: center
+   :alt: Scholium — narrated video from markdown slides
+   :class: only-dark
+
+|
+
 **Automated instructional video generation from markdown slides with embedded narration.**
+
+.. epigraph::
+
+   *Scholium* (Greek: σχόλιον) — An explanatory note or commentary.
+   Your digital scholium for the modern classroom.
 
 Scholium transforms markdown slides with embedded ``:::notes:::`` blocks into professional narrated instructional videos using AI voice synthesis.
 
@@ -42,32 +61,13 @@ Generate video::
     scholium generate lecture.md output.mp4
 
 .. toctree::
-   :maxdepth: 2
-   :caption: User Guide
-
-   user/installation
-   user/quickstart
-   user/markdown-format
-   user/narration-format
-   user/incremental-lists
-   user/timing-control
-   user/tts-providers
-   user/voice_storage
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Reference
-
-   user/cli
-   api/index
-
-.. toctree::
+   :hidden:
    :maxdepth: 1
-   :caption: Additional Resources
 
-   examples
-   troubleshooting
-   contributing
+   getting_started
+   user/index
+   reference
+   resources
 
 Key Features
 ------------
@@ -100,7 +100,7 @@ Key Features
       :::
 
 **Multiple TTS Providers**
-   Choose from 5 different text-to-speech engines:
+   Choose from eight text-to-speech (TTS) engines — local or cloud, free or commercial:
    
    * Piper - Fast, local, recommended for beginners
    * ElevenLabs - Highest quality cloud API
