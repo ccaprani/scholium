@@ -19,6 +19,8 @@ class OpenAIProvider(TTSProvider):
             for higher quality at greater cost).
     """
 
+    SAMPLE_RATE: int = 24000
+
     def __init__(self, api_key: Optional[str] = None, model: str = "tts-1"):
         """Initialize OpenAI TTS provider.
 

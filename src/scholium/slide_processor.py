@@ -4,8 +4,11 @@ import os
 import subprocess
 from pathlib import Path
 from typing import List
+
 from pdf2image import convert_from_path
 from PIL import Image
+
+__all__ = ["SlideProcessor"]
 
 
 class SlideProcessor:

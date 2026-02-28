@@ -3,7 +3,9 @@
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+__all__ = ["VideoGenerator"]
 
 
 class VideoGenerator:

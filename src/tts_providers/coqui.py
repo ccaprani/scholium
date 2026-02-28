@@ -22,6 +22,8 @@ COQUI_AVAILABLE = CoquiTTS is not None
 class CoquiProvider(TTSProvider):
     """Coqui TTS provider for local text-to-speech with voice cloning."""
 
+    SAMPLE_RATE: int = 24000
+
     def __init__(
         self,
         model_name: str = "tts_models/multilingual/multi-dataset/xtts_v2",

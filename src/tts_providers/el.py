@@ -14,6 +14,8 @@ from .base import TTSProvider
 class ElevenLabsProvider(TTSProvider):
     """ElevenLabs text-to-speech provider."""
 
+    SAMPLE_RATE: int = 44100
+
     def __init__(
         self,
         api_key: Optional[str] = None,

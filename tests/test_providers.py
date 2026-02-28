@@ -522,10 +522,10 @@ class TestListVoicesCLI:
         assert "No voices found" in result.output
 
     def test_unsupported_provider_raises(self, runner):
-        """--provider openai (not yet supported) gives a clear error."""
+        """--provider with a provider that has no voice listing gives a clear error."""
         result = runner.invoke(
             cli,
-            ["list-voices", "--provider", "openai", "--config", "nonexistent.yaml"],
+            ["list-voices", "--provider", "coqui", "--config", "nonexistent.yaml"],
         )
         assert result.exit_code != 0
         assert "not supported" in result.output

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Main CLI for Scholium - automated instructional video generation."""
 
+from __future__ import annotations
+
 import sys
 import click
 import shutil
@@ -47,7 +49,14 @@ def cli():
 @click.option("--description", default=None, help="Optional description for the voice")
 @click.option("--language", default="en", help="Language code (default: en)")
 @click.option("--config", default="config.yaml", help="Path to config file")
-def train_voice(name, provider, sample, description, language, config):
+def train_voice(
+    name: str,
+    provider: str,
+    sample: str,
+    description: str | None,
+    language: str,
+    config: str,
+) -> None:
     """Train/create a new voice from an audio sample.
 
     Example:
@@ -191,7 +200,7 @@ def train_voice(name, provider, sample, description, language, config):
 @cli.command("regenerate-embeddings")
 @click.option("--voice", required=True, help="Voice name")
 @click.option("--config", default="config.yaml", help="Path to config file")
-def regenerate_embeddings(voice, config):
+def regenerate_embeddings(voice: str, config: str) -> None:
     """Regenerate speaker embeddings for a Coqui voice.
 
     Useful for existing voices that don't have pre-computed embeddings.
@@ -264,7 +273,7 @@ def providers():
 
 
 @providers.command("list")
-def list_providers():
+def list_providers() -> None:
     """List all available TTS providers and their installation status."""
     # Define available providers
     provider_info = {
@@ -412,7 +421,7 @@ def list_providers():
 
 @providers.command("info")
 @click.argument("provider_name")
-def provider_info(provider_name):
+def provider_info(provider_name: str) -> None:
     """Show detailed information about a specific provider.
 
     Example:
@@ -614,7 +623,7 @@ def provider_info(provider_name):
     "'elevenlabs' (cloud catalogue). Omit to list locally registered voices.",
 )
 @click.option("--config", default="config.yaml", help="Path to config file")
-def list_voices(provider, config):
+def list_voices(provider: str | None, config: str) -> None:
     """List available voices.
 
     Without --provider, lists voices registered in the local voice library.
@@ -829,20 +838,20 @@ def _list_elevenlabs_voices(cfg):
 @click.option("--audio-only", is_flag=True, help="Generate only audio files (no video)")
 @click.option("--open-dir", is_flag=True, help="Open output directory after generation")
 def generate(
-    slides_md,
-    output_mp4,
-    voice,
-    model,
-    provider,
-    config,
-    section_duration,
-    keep_temp,
-    verbose,
-    no_pdf,
-    play,
-    audio_only,
-    open_dir,
-):
+    slides_md: str,
+    output_mp4: str,
+    voice: str | None,
+    model: str | None,
+    provider: str | None,
+    config: str,
+    section_duration: float | None,
+    keep_temp: bool,
+    verbose: bool,
+    no_pdf: bool,
+    play: bool,
+    audio_only: bool,
+    open_dir: bool,
+) -> None:
     """Generate video from markdown slides with embedded notes.
 
     The markdown file should contain ::: notes ::: blocks for narration.

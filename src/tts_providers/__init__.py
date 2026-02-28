@@ -103,6 +103,11 @@ def get_provider_class(provider_name: str):
     return provider_class
 
 
+VALID_PROVIDERS = frozenset([
+    "piper", "elevenlabs", "coqui", "openai", "bark", "f5tts", "styletts2", "tortoise"
+])
+
+
 __all__ = [
     "PiperProvider",
     "ElevenLabsProvider",
@@ -112,6 +117,7 @@ __all__ = [
     "F5TTSProvider",
     "StyleTTS2Provider",
     "TortoiseProvider",
+    "VALID_PROVIDERS",
     "get_available_providers",
     "get_installed_providers",
     "is_provider_available",

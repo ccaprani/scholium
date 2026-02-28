@@ -22,11 +22,7 @@ project = "Scholium"
 copyright = "2026, Scholium Contributors"
 author = "Scholium Contributors"
 
-# The full version, including alpha/beta/rc tags
-# The short Major.Minor.Build version
-_v = ver.split(".")
-_build = "".join([c for c in _v[2] if c.isdigit()])
-version = _v[0] + "." + _v[1] + "." + _build
+version = ver
 release = ver
 
 

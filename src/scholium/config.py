@@ -4,7 +4,11 @@ import copy
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Optional, Dict
+
+__all__ = ["Config"]
+
+from tts_providers import VALID_PROVIDERS
 
 
 class Config:
@@ -53,6 +57,47 @@ class Config:
 
         # Override with environment variables
         self._load_env_vars()
+
+        # Validate the merged config
+        self._validate()
+
+    def _validate(self) -> None:
+        """Validate configuration values.
+        
+        Raises:
+            ValueError: If configuration values are invalid.
+        """
+        # Validate tts_provider
+        provider = self.config.get("tts_provider")
+        if provider and provider not in VALID_PROVIDERS:
+            raise ValueError(
+                f"Invalid tts_provider: '{provider}'. "
+                f"Valid options: {', '.join(sorted(VALID_PROVIDERS))}"
+            )
+
+        # Validate resolution
+        resolution = self.config.get("resolution")
+        if resolution:
+            if not isinstance(resolution, (list, tuple)) or len(resolution) != 2:
+                raise ValueError(f"resolution must be a 2-element list/tuple, got: {resolution}")
+            width, height = resolution
+            if not isinstance(width, int) or not isinstance(height, int):
+                raise ValueError(f"resolution values must be integers, got: {resolution}")
+            if width <= 0 or height <= 0:
+                raise ValueError(f"resolution values must be positive, got: {resolution}")
+
+        # Validate fps
+        fps = self.config.get("fps")
+        if fps is not None:
+            if not isinstance(fps, int) or fps <= 0:
+                raise ValueError(f"fps must be a positive integer, got: {fps}")
+
+        # Validate timing values
+        timing = self.config.get("timing", {})
+        for key in ["default_pre_delay", "default_post_delay", "min_slide_duration", "silent_slide_duration"]:
+            value = timing.get(key)
+            if value is not None and (not isinstance(value, (int, float)) or value < 0):
+                raise ValueError(f"timing.{key} must be non-negative, got: {value}")
 
     def _merge_config(self, user_config: Dict[str, Any]):
         """Recursively merge user config with defaults."""

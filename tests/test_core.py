@@ -560,7 +560,7 @@ class TestVoiceManager:
 
 
 # ---------------------------------------------------------------------------
-# Integration (no external tools required)
+# Parser output structure (unit tests - no external tools required)
 # ---------------------------------------------------------------------------
 
 

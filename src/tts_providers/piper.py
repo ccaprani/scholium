@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class PiperProvider(TTSProvider):
     """Piper TTS provider — fast, modern, local TTS with no API key required."""
 
+    SAMPLE_RATE: int = 22050
+
     # Voice download URLs from HuggingFace
     VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0"
 

@@ -1,7 +1,7 @@
 """Base TTS provider class with unified API."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 class TTSProvider(ABC):
@@ -12,9 +12,17 @@ class TTSProvider(ABC):
     can be overridden to expose provider metadata.
     """
 
+    SAMPLE_RATE: int = 24000
+    """Default sample rate in Hz for audio output."""
+
     def __init__(self):
         """Initialize base provider."""
         pass
+
+    @property
+    def sample_rate(self) -> int:
+        """Return the sample rate for this provider's audio output."""
+        return self.SAMPLE_RATE
 
     @abstractmethod
     def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:

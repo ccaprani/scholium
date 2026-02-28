@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "scholium"
 version = "2026.1"
 description = "Generate educational videos from markdown slides with AI voice synthesis"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Colin Caprani", email = "colin.caprani@monash.edu"}
@@ -17,6 +17,8 @@ classifiers = [
     "Intended Audience :: Education",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -28,6 +30,7 @@ dependencies = [
     "Pillow>=10.0.0",
     "ffmpeg-python>=0.2.0",
     "pydub>=0.25.0",
+    "audioop-lts>=0.2.1; python_version >= '3.13'",
     "tqdm>=4.65.0",
 ]
 

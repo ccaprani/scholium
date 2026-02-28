@@ -5,6 +5,8 @@ import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+__all__ = ["VoiceManager"]
+
 
 class VoiceManager:
     """Manages voice profiles and voice library."""

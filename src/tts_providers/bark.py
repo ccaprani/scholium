@@ -20,6 +20,9 @@ class BarkProvider(TTSProvider):
             e.g. ``"v2/en_speaker_6"`` (default).
     """
 
+    # TODO: align with the SAMPLE_RATE class pattern used by other providers;
+    # this class attribute shadows the base sample_rate property, making the
+    # self.SAMPLE_RATE instance attribute set in __init__ unreachable via property.
     sample_rate: int = 24000  # Bark's native output sample rate
 
     def __init__(self, model: str = "small", voice_preset: str = "v2/en_speaker_6"):

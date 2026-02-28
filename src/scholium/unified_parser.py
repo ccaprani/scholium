@@ -10,10 +10,13 @@ Supports:
 """
 
 import re
-import yaml
-from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import yaml
+
+__all__ = ["Slide", "UnifiedParser", "validate_slides", "parse_time_spec"]
 
 
 @dataclass

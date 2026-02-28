@@ -2,7 +2,11 @@
 
 import re
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+__all__ = ["TTSEngine"]
+
+from tts_providers import VALID_PROVIDERS
 
 
 class TTSEngine:
@@ -114,7 +118,10 @@ class TTSEngine:
                     ref_audio=self._resolve_model_path(raw) if raw else None,
                 )
             else:
-                raise ValueError(f"Unknown TTS provider: {self.provider_name}")
+                raise ValueError(
+                    f"Unknown TTS provider: '{self.provider_name}'. "
+                    f"Valid options: {', '.join(sorted(VALID_PROVIDERS))}"
+                )
         except ImportError as e:
             raise ImportError(
                 f"TTS provider '{self.provider_name}' not installed. "
@@ -150,18 +157,7 @@ class TTSEngine:
             audio = AudioSegment.from_file(audio_path)
             return audio.frame_rate
         except Exception:
-            # Fallback to provider defaults
-            provider_sample_rates = {
-                "piper": 22050,
-                "elevenlabs": 44100,
-                "coqui": 24000,
-                "openai": 24000,
-                "bark": 24000,
-                "f5tts": 24000,
-                "styletts2": 24000,
-                "tortoise": 24000,
-            }
-            return provider_sample_rates.get(self.provider_name, 22050)
+            return self.provider.sample_rate
 
     def _create_silent_audio(
         self, output_path: str, duration: float, reference_audio_path: str = None
@@ -183,25 +179,9 @@ class TTSEngine:
 
         # Determine sample rate
         if reference_audio_path and Path(reference_audio_path).exists():
-            # Match the sample rate of a reference audio file
             sample_rate = self._detect_sample_rate_from_audio(reference_audio_path)
         else:
-            # Use provider's sample rate
-            sample_rate = getattr(self.provider, "sample_rate", None)
-
-            if sample_rate is None:
-                # Fallback to known provider defaults
-                provider_sample_rates = {
-                    "piper": 22050,
-                    "elevenlabs": 44100,
-                    "coqui": 24000,
-                    "openai": 24000,
-                    "bark": 24000,
-                    "f5tts": 24000,
-                    "styletts2": 24000,
-                    "tortoise": 24000,
-                }
-                sample_rate = provider_sample_rates.get(self.provider_name, 22050)
+            sample_rate = self.provider.sample_rate
 
         # Generate silence using pydub
         duration_ms = int(duration * 1000)
