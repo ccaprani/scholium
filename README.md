@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)"  srcset="docs/brand/logo-horizontal-dark-navbar.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/brand/logo-horizontal.svg">
-    <img alt="Scholium" src="docs/brand/logo-horizontal.svg" width="65%">
+    <source media="(prefers-color-scheme: dark)"  srcset="https://raw.githubusercontent.com/ccaprani/scholium/main/docs/brand/logo-horizontal-dark-navbar.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/ccaprani/scholium/main/docs/brand/logo-horizontal.svg">
+    <img alt="Scholium" src="https://raw.githubusercontent.com/ccaprani/scholium/main/docs/demo/logo-horizontal.png" width="65%">
   </picture>
 </p>
 

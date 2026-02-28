@@ -9,6 +9,7 @@ Requires: Pillow  (pip install pillow)
 """
 
 from PIL import Image, ImageDraw, ImageFont
+from pilmoji import Pilmoji
 import os
 
 # ── Palette ──────────────────────────────────────────────────────────────────
@@ -37,12 +38,9 @@ def blank():
     draw = ImageDraw.Draw(img)
     # top title bar
     draw.rectangle([0, 0, W, BAR_H], fill=(35, 40, 50))
-    draw.text((PAD, 7), "  terminal — scholium demo", font=font, fill=DIM)
-    return img, draw
-
-def txt(draw, x, y, s, color=FG):
-    draw.text((x, y), s, font=font, fill=color)
-    return y + LINE_H
+    with Pilmoji(img) as pj:
+        pj.text((PAD, 7), "  terminal — scholium demo", font=font, fill=DIM)
+    return img
 
 # ── Script ───────────────────────────────────────────────────────────────────
 # Each entry: (text, colour, hold_ms)
@@ -109,12 +107,13 @@ def build_frames(script):
 
     for (s, col, delay) in script:
         visible.append((s, col))
-        img, draw = blank()
+        img = blank()
         start = max(0, len(visible) - max_lines)
         y = BAR_H + PAD
-        for (line, lc) in visible[start:]:
-            txt(draw, PAD, y, line, lc)
-            y += LINE_H
+        with Pilmoji(img) as pj:
+            for (line, lc) in visible[start:]:
+                pj.text((PAD, y), line, font=font, fill=lc)
+                y += LINE_H
         frames.append((img.copy(), delay))
     return frames
 
