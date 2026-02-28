@@ -118,7 +118,8 @@ class TTSEngine:
         except ImportError as e:
             raise ImportError(
                 f"TTS provider '{self.provider_name}' not installed. "
-                f"Install with: pip install scholium[{self.provider_name}]"
+                f"Install with: pip install scholium[{self.provider_name}]\n"
+                f"Details: {e}"
             ) from e
 
     def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:

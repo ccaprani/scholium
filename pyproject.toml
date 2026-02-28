@@ -134,7 +134,7 @@ version = {attr = "scholium.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["scholium*"]
+include = ["scholium*", "tts_providers*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
