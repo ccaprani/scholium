@@ -12,7 +12,7 @@ from tqdm import tqdm
 from scholium.config import Config
 from scholium.slide_processor import SlideProcessor
 from scholium.voice_manager import VoiceManager
-from scholium.tts_engine import TTSEngine
+from scholium.tts_engine import TTSEngine, QUALITY_PRESETS, _NATIVE_SPEED_PROVIDERS
 from scholium.video_generator import VideoGenerator
 
 
@@ -415,7 +415,7 @@ def config_init(path: str, force: bool) -> None:
 
 @config.command("show")
 @click.option(
-    "--config",
+    "--path",
     "config_path",
     default="config.yaml",
     show_default=True,
@@ -429,7 +429,7 @@ def config_show(config_path: str) -> None:
 
     Examples:
         scholium config show
-        scholium config show --config my_project/config.yaml
+        scholium config show --path my_project/config.yaml
     """
     import yaml as _yaml
 
@@ -790,6 +790,24 @@ def provider_info(provider_name: str) -> None:
     if info.get("notes"):
         click.echo(f"\n  Notes:")
         click.echo(f"    {info['notes']}")
+
+    # ── Speed & quality CLI mapping ───────────────────────────────────────────
+    click.echo(f"\n  Speed & quality (--speed / --quality on scholium generate):")
+    speed_note = (
+        "passed natively to provider (range: 0.1–5.0)"
+        if provider_name in _NATIVE_SPEED_PROVIDERS
+        else "post-processed via ffmpeg atempo (range: 0.1–5.0)"
+    )
+    click.echo(f"    --speed RATE  {speed_note}")
+
+    presets = QUALITY_PRESETS.get(provider_name)
+    if presets:
+        click.echo(f"    --quality:")
+        for preset, settings in presets.items():
+            settings_str = ", ".join(f"{k}={v}" for k, v in settings.items())
+            click.echo(f"      {preset:<10}  →  {settings_str}")
+    else:
+        click.echo(f"    --quality     no quality presets for this provider")
 
     click.echo()
 

@@ -135,7 +135,7 @@ class TestConfigCLI:
         """config show replaces non-empty API keys with ***."""
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text("elevenlabs:\n  api_key: 'secret123'\n")
-        result = runner.invoke(cli, ["config", "show", "--config", str(cfg_file)])
+        result = runner.invoke(cli, ["config", "show", "--path", str(cfg_file)])
         assert result.exit_code == 0, result.output
         assert "secret123" not in result.output
         assert "***" in result.output
@@ -143,7 +143,7 @@ class TestConfigCLI:
     def test_config_show_defaults(self, runner, tmp_path):
         """config show with a nonexistent config shows built-in defaults."""
         result = runner.invoke(
-            cli, ["config", "show", "--config", str(tmp_path / "nonexistent.yaml")]
+            cli, ["config", "show", "--path", str(tmp_path / "nonexistent.yaml")]
         )
         assert result.exit_code == 0, result.output
         assert "tts_provider" in result.output

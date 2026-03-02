@@ -31,7 +31,7 @@ scholium config show
 
 Prints the effective configuration — built-in defaults merged with your `config.yaml` and any environment variables. API keys are masked as `***` so the output is safe to share or log.
 
-Use `--config PATH` to inspect a config file that is not in the current directory.
+Use `--path PATH` to inspect a config file that is not in the current directory.
 
 ---
 

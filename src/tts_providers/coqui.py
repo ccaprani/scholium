@@ -12,8 +12,7 @@ torch = None
 
 try:
     from TTS.api import TTS as CoquiTTS
-except ImportError as e:
-    print("Fails:", type(e).__name__, e)
+except ImportError:
     CoquiTTS = None
 
 COQUI_AVAILABLE = CoquiTTS is not None

@@ -43,6 +43,22 @@ Generate an instructional video from markdown slides with embedded narration.
 > - **OpenAI** — built-in voice name: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
 > - **Coqui / F5-TTS / StyleTTS2 / Tortoise** — name of a registered voice from `scholium list-voices`
 
+> **Note on `--quality`:** The preset maps to provider-specific settings automatically:
+>
+> | Provider | `fast` | `balanced` | `best` |
+> |----------|--------|------------|--------|
+> | piper | `quality: low` | `quality: medium` | `quality: high` |
+> | openai | model `tts-1` | model `tts-1` | model `tts-1-hd` |
+> | elevenlabs | turbo model | multilingual v2 | multilingual v2 |
+> | bark | `model: small` | `model: small` | `model: large` |
+> | tortoise | `ultra_fast` preset | `fast` preset | `high_quality` preset |
+> | styletts2 | 3 diffusion steps | 5 steps | 10 steps |
+> | f5tts | `vocoder: vocos` | `vocoder: vocos` | `vocoder: bigvgan` |
+>
+> Run `scholium providers info PROVIDER` to see the exact mapping for your provider.
+
+> **Note on `--speed`:** For `piper` and `openai`, speed is passed natively to the provider. For all other providers, Scholium applies a pitch-preserving time-stretch via ffmpeg's `atempo` filter after generation.
+
 ### Examples
 
 ```bash
@@ -234,8 +250,8 @@ scholium config init
 # Write to a custom location
 scholium config init --path project/settings.yaml
 
-# Overwrite an existing file
-scholium config init --force
+# Overwrite an existing file at a custom location
+scholium config init --path project/settings.yaml --force
 ```
 
 Edit only the settings you want to change — everything else defaults to sensible values.
@@ -254,7 +270,7 @@ Print the **effective** configuration: built-in defaults merged with your `confi
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--config PATH` | Config file to inspect | `config.yaml` |
+| `--path PATH` | Config file to inspect | `config.yaml` |
 
 ### Example
 
@@ -263,7 +279,7 @@ Print the **effective** configuration: built-in defaults merged with your `confi
 scholium config show
 
 # Inspect a config in a different location
-scholium config show --config ~/lectures/config.yaml
+scholium config show --path ~/lectures/config.yaml
 ```
 
 ---
