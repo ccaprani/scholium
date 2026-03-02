@@ -21,12 +21,13 @@ class OpenAIProvider(TTSProvider):
 
     SAMPLE_RATE: int = 24000
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "tts-1"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "tts-1", speed: float = 1.0):
         """Initialize OpenAI TTS provider.
 
         Args:
             api_key: OpenAI API key (or set ``OPENAI_API_KEY`` env var).
             model: Model identifier, e.g. ``"tts-1"`` or ``"tts-1-hd"``.
+            speed: Speech rate multiplier (0.25–4.0; default 1.0).
 
         Raises:
             ValueError: If no API key is available.
@@ -42,6 +43,7 @@ class OpenAIProvider(TTSProvider):
             )
 
         self.model = model
+        self.speed = speed
 
         try:
             from openai import OpenAI
@@ -77,6 +79,7 @@ class OpenAIProvider(TTSProvider):
                 model=self.model,
                 voice=voice,
                 input=text,
+                speed=self.speed,
             )
             response.stream_to_file(str(output_path))
             return str(output_path)

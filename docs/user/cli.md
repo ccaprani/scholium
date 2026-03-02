@@ -24,6 +24,11 @@ Generate an instructional video from markdown slides with embedded narration.
 | `--voice` | Voice name or ID (see note below) | from config |
 | `--model` | TTS model ID | from config |
 | `--config` | Path to configuration file | `config.yaml` |
+| `--speed RATE` | Speech rate multiplier (0.1–5.0; 1.0=normal, 0.9=10% slower) | from config |
+| `--quality PRESET` | Quality preset: `fast`, `balanced`, `best` | from config |
+| `--slides RANGE` | Process only a subset of slides, e.g. `5` or `3-7` (1-indexed pages) | all |
+| `--dry-run` | Parse narration and print it; skip all generation | false |
+| `--resume` | Skip audio generation for slides whose temp files already exist | false |
 | `--section-duration` | Duration for silent slides (seconds) | `3.0` |
 | `--verbose` | Show detailed progress output | false |
 | `--keep-temp` | Keep temporary files for debugging | false |
@@ -49,6 +54,21 @@ scholium generate lecture.md output.mp4 --voice en_US-amy-medium
 
 # Different provider
 scholium generate lecture.md output.mp4 --provider elevenlabs --voice Xb7hH8MSUJpSbSDYk0k2
+
+# Slow down speech by 10%, use best quality
+scholium generate lecture.md output.mp4 --speed 0.9 --quality best
+
+# Preview narration without generating anything (fast, no pandoc/ffmpeg)
+scholium generate lecture.md output.mp4 --dry-run
+
+# Re-generate only slide 5
+scholium generate lecture.md output.mp4 --slides 5
+
+# Re-generate slides 3 through 7
+scholium generate lecture.md output.mp4 --slides 3-7
+
+# Resume an interrupted run (skips existing audio files in ./temp/)
+scholium generate lecture.md output.mp4 --resume --keep-temp
 
 # Verbose with temp files kept
 scholium generate lecture.md output.mp4 --verbose --keep-temp
@@ -190,6 +210,64 @@ scholium regenerate-embeddings --voice my_voice
 
 ---
 
+## `scholium config init`
+
+```bash
+scholium config init [OPTIONS]
+```
+
+Create a `config.yaml` in the current directory with every supported setting included, annotated with comments explaining each option.
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--path PATH` | Write to a different location | `config.yaml` |
+| `--force` | Overwrite an existing file | false |
+
+### Example
+
+```bash
+# Generate a config file in the current directory
+scholium config init
+
+# Write to a custom location
+scholium config init --path project/settings.yaml
+
+# Overwrite an existing file
+scholium config init --force
+```
+
+Edit only the settings you want to change — everything else defaults to sensible values.
+
+---
+
+## `scholium config show`
+
+```bash
+scholium config show [OPTIONS]
+```
+
+Print the **effective** configuration: built-in defaults merged with your `config.yaml` and any environment-variable overrides. API keys are masked as `***` so the output is safe to share or log.
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--config PATH` | Config file to inspect | `config.yaml` |
+
+### Example
+
+```bash
+# Inspect config in current directory
+scholium config show
+
+# Inspect a config in a different location
+scholium config show --config ~/lectures/config.yaml
+```
+
+---
+
 ## `scholium providers list`
 
 ```bash
@@ -216,7 +294,9 @@ scholium providers info f5tts
 
 ## Configuration File
 
-Create `config.yaml` in your project directory:
+Use `scholium config init` to generate a fully-annotated `config.yaml`, or create it manually. Place it in the same directory as your slides and it is picked up automatically.
+
+For a complete reference of every setting — including provider-specific speed and quality controls — see [Advanced Configuration](advanced-config.md).
 
 ```yaml
 # TTS settings
@@ -226,10 +306,13 @@ voice: "en_US-lessac-medium"
 # Provider-specific settings
 piper:
   quality: "medium"
+  speed: 1.0       # 0.1–5.0  (lower = slower)
 
 elevenlabs:
   api_key: ""          # Leave empty — use ELEVENLABS_API_KEY env var
   model: "eleven_multilingual_v2"
+  stability: 0.5       # 0.0–1.0  (optional)
+  similarity_boost: 0.75  # 0.0–1.0  (optional)
 
 coqui:
   model: "tts_models/multilingual/multi-dataset/xtts_v2"
@@ -237,6 +320,7 @@ coqui:
 openai:
   api_key: ""          # Leave empty — use OPENAI_API_KEY env var
   model: "tts-1"
+  speed: 1.0           # 0.25–4.0
 
 bark:
   model: "small"
@@ -258,9 +342,9 @@ tortoise:
 
 # Timing defaults
 timing:
-  default_pre_delay: 0.0
-  default_post_delay: 0.0
-  min_slide_duration: 3.0
+  default_pre_delay: 1.0
+  default_post_delay: 2.0
+  min_slide_duration: 4.0
   silent_slide_duration: 3.0
 
 # Video settings

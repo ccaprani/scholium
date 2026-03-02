@@ -21,15 +21,18 @@ class PiperProvider(TTSProvider):
     # Voice download URLs from HuggingFace
     VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0"
 
-    def __init__(self, **kwargs):
+    def __init__(self, length_scale: float = 1.0, **kwargs):
         """Initialise the Piper provider.
 
-        Any keyword arguments are accepted and ignored so that the provider can
-        be constructed uniformly by :class:`~scholium.tts_engine.TTSEngine`
-        without needing provider-specific construction logic.
+        Args:
+            length_scale: Phoneme duration scaling factor.  Values > 1.0 slow
+                speech down; values < 1.0 speed it up.  This is the inverse of
+                the user-facing ``speed`` setting: ``length_scale = 1 / speed``.
+                Passed as ``--length-scale`` to the piper binary.
         """
         self.voices_dir = Path.home() / ".local" / "share" / "piper" / "voices"
         self.voices_dir.mkdir(parents=True, exist_ok=True)
+        self.length_scale = length_scale
 
     def _download_voice(self, voice_name: str) -> None:
         """Download a voice model from HuggingFace if not already present.
@@ -117,7 +120,12 @@ class PiperProvider(TTSProvider):
 
         try:
             subprocess.run(
-                ["piper", "--model", str(voice_model), "--output_file", str(wav_path)],
+                [
+                    "piper",
+                    "--model", str(voice_model),
+                    "--output_file", str(wav_path),
+                    "--length-scale", str(self.length_scale),
+                ],
                 input=text,
                 text=True,
                 check=True,

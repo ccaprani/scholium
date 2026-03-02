@@ -236,3 +236,4 @@ source ~/.bashrc
 - [Quick Start](quickstart.md) — Create your first video
 - [CLI Reference](cli.md) — Command reference
 - [TTS Providers](tts-providers.md) — Provider comparison
+- [Advanced Configuration](advanced-config.md) — Speed, voice quality, and timing controls

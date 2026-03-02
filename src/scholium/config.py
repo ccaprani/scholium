@@ -18,10 +18,15 @@ class Config:
         "pandoc_template": "beamer",
         "tts_provider": "piper",
         "voice": "en_US-lessac-medium",
-        "piper": {"quality": "medium"},
-        "elevenlabs": {"api_key": "", "model": "eleven_monolingual_v1"},
+        "piper": {"quality": "medium", "speed": 1.0},
+        "elevenlabs": {
+            "api_key": "",
+            "model": "eleven_monolingual_v1",
+            "stability": None,        # None = use ElevenLabs default (~0.5)
+            "similarity_boost": None, # None = use ElevenLabs default (~0.75)
+        },
         "coqui": {"model": "tts_models/multilingual/multi-dataset/xtts_v2"},
-        "openai": {"api_key": "", "model": "tts-1"},
+        "openai": {"api_key": "", "model": "tts-1", "speed": 1.0},
         "bark": {"model": "small"},
         "timing": {
             "default_pre_delay": 1.0,
@@ -91,6 +96,26 @@ class Config:
         if fps is not None:
             if not isinstance(fps, int) or fps <= 0:
                 raise ValueError(f"fps must be a positive integer, got: {fps}")
+
+        # Validate piper.speed
+        piper_speed = self.config.get("piper", {}).get("speed")
+        if piper_speed is not None:
+            if not isinstance(piper_speed, (int, float)) or not (0.1 <= piper_speed <= 5.0):
+                raise ValueError(f"piper.speed must be a number between 0.1 and 5.0, got: {piper_speed}")
+
+        # Validate openai.speed
+        openai_speed = self.config.get("openai", {}).get("speed")
+        if openai_speed is not None:
+            if not isinstance(openai_speed, (int, float)) or not (0.25 <= openai_speed <= 4.0):
+                raise ValueError(f"openai.speed must be a number between 0.25 and 4.0, got: {openai_speed}")
+
+        # Validate elevenlabs.stability and similarity_boost
+        el = self.config.get("elevenlabs", {})
+        for el_key in ("stability", "similarity_boost"):
+            val = el.get(el_key)
+            if val is not None:
+                if not isinstance(val, (int, float)) or not (0.0 <= val <= 1.0):
+                    raise ValueError(f"elevenlabs.{el_key} must be a number between 0.0 and 1.0, got: {val}")
 
         # Validate timing values
         timing = self.config.get("timing", {})

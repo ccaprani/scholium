@@ -1,12 +1,81 @@
 """TTS engine for managing text-to-speech generation."""
 
+from __future__ import annotations
+
 import re
+import subprocess
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 __all__ = ["TTSEngine"]
 
 from tts_providers import VALID_PROVIDERS
+
+
+# ── Quality presets ───────────────────────────────────────────────────────────
+# Maps provider_name → preset_name → {config_key: value}.
+# Applied on top of provider_config in _create_provider(), so per-preset
+# values take precedence over config.yaml entries.
+QUALITY_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "piper": {
+        "fast":     {"quality": "low"},
+        "balanced": {"quality": "medium"},
+        "best":     {"quality": "high"},
+    },
+    "openai": {
+        "fast":     {"model": "tts-1"},
+        "balanced": {"model": "tts-1"},
+        "best":     {"model": "tts-1-hd"},
+    },
+    "elevenlabs": {
+        "fast":     {"model": "eleven_turbo_v2_5"},
+        "balanced": {"model": "eleven_multilingual_v2"},
+        "best":     {"model": "eleven_multilingual_v2"},
+    },
+    "bark": {
+        "fast":     {"model": "small"},
+        "balanced": {"model": "small"},
+        "best":     {"model": "large"},
+    },
+    "tortoise": {
+        "fast":     {"preset": "ultra_fast"},
+        "balanced": {"preset": "fast"},
+        "best":     {"preset": "high_quality"},
+    },
+    "styletts2": {
+        "fast":     {"diffusion_steps": 3},
+        "balanced": {"diffusion_steps": 5},
+        "best":     {"diffusion_steps": 10},
+    },
+    "f5tts": {
+        "fast":     {"vocoder": "vocos"},
+        "balanced": {"vocoder": "vocos"},
+        "best":     {"vocoder": "bigvgan"},
+    },
+    # coqui: no meaningful quality knob — all presets are no-ops
+}
+
+# Providers whose API accepts a native speed parameter.  All others get
+# pitch-preserving post-processing via ffmpeg atempo.
+_NATIVE_SPEED_PROVIDERS = frozenset({"piper", "openai"})
+
+
+def _build_atempo_filter(speed: float) -> str:
+    """Return an ffmpeg audio filter string for pitch-preserving speed change.
+
+    ``atempo`` accepts values in [0.5, 2.0].  For speeds outside that range,
+    multiple filters are chained (e.g. 0.25x → ``atempo=0.5,atempo=0.5``).
+    """
+    filters: list[str] = []
+    remaining = speed
+    while remaining > 2.0:
+        filters.append("atempo=2.0")
+        remaining /= 2.0
+    while remaining < 0.5:
+        filters.append("atempo=0.5")
+        remaining /= 0.5
+    filters.append(f"atempo={remaining:.6f}")
+    return ",".join(filters)
 
 
 class TTSEngine:
@@ -18,6 +87,8 @@ class TTSEngine:
         provider_config: Dict[str, Any] = None,
         voices_dir: str = None,
         config=None,
+        quality_preset: Optional[str] = None,
+        speed_override: Optional[float] = None,
     ):
         """Initialize TTS engine.
 
@@ -27,11 +98,25 @@ class TTSEngine:
             provider_config: Configuration for the provider
             voices_dir: Directory for storing voice models and trained voices
             config: Config object for accessing global settings
+            quality_preset: High-level quality preset: 'fast', 'balanced', or
+                'best'.  Overrides the matching provider config key(s).
+            speed_override: Speech rate multiplier (0.1–5.0).  For providers
+                that accept native speed (piper, openai) this is wired through
+                the provider config; for all others it is applied as a
+                pitch-preserving ffmpeg ``atempo`` post-process step.
         """
         self.provider_name = provider_name.lower()
         self.provider_config = provider_config or {}
         self.voices_dir = voices_dir or "~/.local/share/scholium/voices"
         self.config = config
+        self.quality_preset = quality_preset
+        self.speed_override = speed_override
+        # Derived: True when we need ffmpeg post-processing for speed
+        self._needs_speed_postprocess = (
+            speed_override is not None
+            and speed_override != 1.0
+            and self.provider_name not in _NATIVE_SPEED_PROVIDERS
+        )
         self.provider = self._create_provider()
 
     def _resolve_model_path(self, raw: str) -> str:
@@ -47,27 +132,49 @@ class TTSEngine:
         return str(p)
 
     def _create_provider(self):
-        """Create TTS provider instance."""
+        """Create TTS provider instance.
+
+        Applies quality preset and (for native-speed providers) speed override
+        on top of ``provider_config`` before constructing the provider object.
+        """
+        # Build a local config dict so we never mutate self.provider_config.
+        cfg: Dict[str, Any] = dict(self.provider_config)
+
+        # Apply quality preset overrides
+        if self.quality_preset:
+            preset_overrides = (
+                QUALITY_PRESETS.get(self.provider_name, {}).get(self.quality_preset, {})
+            )
+            cfg.update(preset_overrides)
+
+        # For native-speed providers, inject the speed override into cfg
+        if self.speed_override is not None and self.provider_name in _NATIVE_SPEED_PROVIDERS:
+            cfg["speed"] = self.speed_override
+
         try:
             if self.provider_name == "piper":
                 from tts_providers import PiperProvider
 
+                speed = float(cfg.get("speed", 1.0))
                 return PiperProvider(
                     voices_dir=self.voices_dir,
-                    quality=self.provider_config.get("quality", "medium"),
+                    quality=cfg.get("quality", "medium"),
+                    length_scale=1.0 / speed,
                 )
             elif self.provider_name == "elevenlabs":
                 from tts_providers import ElevenLabsProvider
 
                 return ElevenLabsProvider(
-                    model_id=self.provider_config.get("model", "eleven_multilingual_v2"),
+                    model_id=cfg.get("model", "eleven_multilingual_v2"),
+                    stability=cfg.get("stability"),
+                    similarity_boost=cfg.get("similarity_boost"),
                 )
             elif self.provider_name == "coqui":
                 from tts_providers import CoquiProvider
 
                 return CoquiProvider(
                     voices_dir=self.voices_dir,
-                    model_name=self.provider_config.get(
+                    model_name=cfg.get(
                         "model", "tts_models/multilingual/multi-dataset/xtts_v2"
                     ),
                 )
@@ -75,46 +182,47 @@ class TTSEngine:
                 from tts_providers import OpenAIProvider
 
                 return OpenAIProvider(
-                    api_key=self.provider_config.get("api_key"),
-                    model=self.provider_config.get("model", "tts-1"),
+                    api_key=cfg.get("api_key"),
+                    model=cfg.get("model", "tts-1"),
+                    speed=float(cfg.get("speed", 1.0)),
                 )
             elif self.provider_name == "bark":
                 from tts_providers import BarkProvider
 
-                return BarkProvider(model=self.provider_config.get("model", "small"))
+                return BarkProvider(model=cfg.get("model", "small"))
             elif self.provider_name == "f5tts":
                 from tts_providers import F5TTSProvider
 
-                raw = self.provider_config.get("model_path")
+                raw = cfg.get("model_path")
                 return F5TTSProvider(
-                    model=self.provider_config.get("model", "F5-TTS"),
+                    model=cfg.get("model", "F5-TTS"),
                     voices_dir=self.voices_dir,
-                    vocoder=self.provider_config.get("vocoder", "vocos"),
+                    vocoder=cfg.get("vocoder", "vocos"),
                     ref_audio=self._resolve_model_path(raw) if raw else None,
-                    ref_text=self.provider_config.get("ref_text", ""),
+                    ref_text=cfg.get("ref_text", ""),
                 )
             elif self.provider_name == "styletts2":
                 from tts_providers import StyleTTS2Provider
 
-                raw = self.provider_config.get("model_path")
+                raw = cfg.get("model_path")
                 return StyleTTS2Provider(
-                    model_config=self.provider_config.get("model_config"),
-                    model_checkpoint=self.provider_config.get("model_checkpoint"),
+                    model_config=cfg.get("model_config"),
+                    model_checkpoint=cfg.get("model_checkpoint"),
                     voices_dir=self.voices_dir,
-                    alpha=self.provider_config.get("alpha", 0.3),
-                    beta=self.provider_config.get("beta", 0.7),
-                    diffusion_steps=self.provider_config.get("diffusion_steps", 5),
+                    alpha=cfg.get("alpha", 0.3),
+                    beta=cfg.get("beta", 0.7),
+                    diffusion_steps=cfg.get("diffusion_steps", 5),
                     ref_audio=self._resolve_model_path(raw) if raw else None,
                 )
             elif self.provider_name == "tortoise":
                 from tts_providers import TortoiseProvider
 
-                raw = self.provider_config.get("model_path")
+                raw = cfg.get("model_path")
                 return TortoiseProvider(
-                    preset=self.provider_config.get("preset", "fast"),
+                    preset=cfg.get("preset", "fast"),
                     voices_dir=self.voices_dir,
-                    kv_cache=self.provider_config.get("kv_cache", True),
-                    half=self.provider_config.get("half", True),
+                    kv_cache=cfg.get("kv_cache", True),
+                    half=cfg.get("half", True),
                     ref_audio=self._resolve_model_path(raw) if raw else None,
                 )
             else:
@@ -141,6 +249,34 @@ class TTSEngine:
             Path to generated audio file
         """
         return self.provider.generate_audio(text, voice_config, output_path)
+
+    def _apply_speed_postprocess(self, audio_path: str) -> None:
+        """Apply pitch-preserving speed change to *audio_path* in-place.
+
+        Uses ffmpeg's ``atempo`` filter, chaining multiple instances when the
+        requested speed falls outside the single-filter range [0.5, 2.0].
+        The file is modified in place; the original is not kept.
+
+        Args:
+            audio_path: Path to the audio file to modify.
+
+        Raises:
+            RuntimeError: If ffmpeg exits with a non-zero status.
+        """
+        if self.speed_override is None or self.speed_override == 1.0:
+            return
+
+        p = Path(audio_path)
+        tmp = p.with_name(p.stem + "_spd" + p.suffix)
+        atempo = _build_atempo_filter(self.speed_override)
+        cmd = ["ffmpeg", "-y", "-i", str(p), "-filter:a", atempo, str(tmp)]
+        result = subprocess.run(cmd, capture_output=True)
+        if result.returncode != 0:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"ffmpeg speed adjustment failed: {result.stderr.decode()}"
+            )
+        tmp.replace(p)
 
     def _detect_sample_rate_from_audio(self, audio_path: str) -> int:
         """Detect sample rate from an existing audio file.
@@ -198,6 +334,7 @@ class TTSEngine:
         voice_config: Dict[str, Any],
         output_dir: str,
         progress_callback=None,
+        resume: bool = False,
     ) -> List[Dict[str, Any]]:
         """Generate audio for multiple narration segments.
 
@@ -210,6 +347,9 @@ class TTSEngine:
             output_dir: Directory where individual audio files are saved.
             progress_callback: Optional zero-argument callable invoked after
                 each segment is processed (useful for progress bars).
+            resume: When ``True``, skip TTS generation for segments whose
+                audio file already exists on disk (useful for resuming an
+                interrupted run).
 
         Returns:
             list[dict]: List of enriched segment dicts, each containing all
@@ -248,11 +388,16 @@ class TTSEngine:
         # This ensures all silent audio has correct sample rate
         if first_tts_index is not None and first_tts_index > 0:
             first_audio_path = output_dir / f"audio_{first_tts_index:04d}.mp3"
-            first_text = segments[first_tts_index]["text"].strip()
-            self.generate_audio(
-                text=first_text, voice_config=voice_config, output_path=str(first_audio_path)
-            )
-            reference_audio = str(first_audio_path)
+            if resume and first_audio_path.exists():
+                reference_audio = str(first_audio_path)
+            else:
+                first_text = segments[first_tts_index]["text"].strip()
+                self.generate_audio(
+                    text=first_text, voice_config=voice_config, output_path=str(first_audio_path)
+                )
+                if self._needs_speed_postprocess:
+                    self._apply_speed_postprocess(str(first_audio_path))
+                reference_audio = str(first_audio_path)
 
         for i, segment in enumerate(segments):
             # Generate audio file path
@@ -272,10 +417,15 @@ class TTSEngine:
                     self._create_silent_audio(str(audio_path), duration, reference_audio)
                     audio_duration = duration
                 elif text:
-                    # Regular narration - generate audio
-                    self.generate_audio(
-                        text=text, voice_config=voice_config, output_path=str(audio_path)
-                    )
+                    # Regular narration - generate audio (skip if resuming)
+                    if resume and audio_path.exists():
+                        pass  # reuse existing file
+                    else:
+                        self.generate_audio(
+                            text=text, voice_config=voice_config, output_path=str(audio_path)
+                        )
+                        if self._needs_speed_postprocess:
+                            self._apply_speed_postprocess(str(audio_path))
                     audio_duration = self.provider.get_audio_duration(str(audio_path))
 
                     # Store first generated audio as reference for silent audio

@@ -10,8 +10,11 @@ import tempfile
 import shutil
 from pathlib import Path
 import pytest
+from click.testing import CliRunner
 
 from scholium.config import Config
+from scholium.main import cli, _parse_slide_range
+from scholium.tts_engine import _build_atempo_filter, QUALITY_PRESETS, _NATIVE_SPEED_PROVIDERS
 from scholium.voice_manager import VoiceManager
 from scholium.unified_parser import UnifiedParser, Slide, parse_time_spec, validate_slides
 
@@ -89,6 +92,206 @@ class TestConfig:
 
         assert Path(cfg.get("voices_dir")).exists()
         assert Path(cfg.get("temp_dir")).exists()
+
+
+# ---------------------------------------------------------------------------
+# scholium config CLI commands
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestConfigCLI:
+    """Tests for `scholium config init` and `scholium config show`."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_config_init_creates_file(self, runner, tmp_path):
+        """config init writes a config.yaml to the specified path."""
+        dest = tmp_path / "config.yaml"
+        result = runner.invoke(cli, ["config", "init", "--path", str(dest)])
+        assert result.exit_code == 0, result.output
+        assert dest.exists()
+        assert "tts_provider" in dest.read_text()
+
+    def test_config_init_no_overwrite_without_force(self, runner, tmp_path):
+        """config init refuses to overwrite an existing file without --force."""
+        dest = tmp_path / "config.yaml"
+        dest.write_text("existing: true\n")
+        result = runner.invoke(cli, ["config", "init", "--path", str(dest)])
+        assert result.exit_code != 0
+        assert dest.read_text() == "existing: true\n"  # unchanged
+
+    def test_config_init_force_overwrites(self, runner, tmp_path):
+        """config init --force overwrites an existing file."""
+        dest = tmp_path / "config.yaml"
+        dest.write_text("existing: true\n")
+        result = runner.invoke(cli, ["config", "init", "--path", str(dest), "--force"])
+        assert result.exit_code == 0, result.output
+        assert "tts_provider" in dest.read_text()
+
+    def test_config_show_masks_api_keys(self, runner, tmp_path):
+        """config show replaces non-empty API keys with ***."""
+        cfg_file = tmp_path / "config.yaml"
+        cfg_file.write_text("elevenlabs:\n  api_key: 'secret123'\n")
+        result = runner.invoke(cli, ["config", "show", "--config", str(cfg_file)])
+        assert result.exit_code == 0, result.output
+        assert "secret123" not in result.output
+        assert "***" in result.output
+
+    def test_config_show_defaults(self, runner, tmp_path):
+        """config show with a nonexistent config shows built-in defaults."""
+        result = runner.invoke(
+            cli, ["config", "show", "--config", str(tmp_path / "nonexistent.yaml")]
+        )
+        assert result.exit_code == 0, result.output
+        assert "tts_provider" in result.output
+        assert "piper" in result.output
+
+
+# ---------------------------------------------------------------------------
+# _parse_slide_range
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestParseSlideRange:
+    """Unit tests for the --slides range parser."""
+
+    def test_single_slide(self):
+        assert _parse_slide_range("5") == (5, 5)
+
+    def test_range(self):
+        assert _parse_slide_range("3-7") == (3, 7)
+
+    def test_whitespace_ignored(self):
+        assert _parse_slide_range(" 3-7 ") == (3, 7)
+
+    def test_invalid_raises(self):
+        with pytest.raises(ValueError):
+            _parse_slide_range("abc")
+
+
+# ---------------------------------------------------------------------------
+# _build_atempo_filter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestBuildAtempoFilter:
+    """Unit tests for ffmpeg atempo filter chain builder."""
+
+    def test_normal_speed(self):
+        assert _build_atempo_filter(1.0) == "atempo=1.000000"
+
+    def test_slow_speed_single_filter(self):
+        f = _build_atempo_filter(0.9)
+        assert f == "atempo=0.900000"
+
+    def test_very_slow_chains_filters(self):
+        # 0.25 = 0.5 × 0.5 — needs two atempo links
+        f = _build_atempo_filter(0.25)
+        assert f.count("atempo") == 2
+
+    def test_fast_speed_single_filter(self):
+        assert _build_atempo_filter(1.5) == "atempo=1.500000"
+
+    def test_very_fast_chains_filters(self):
+        # 3.0 > 2.0 — needs two atempo links
+        f = _build_atempo_filter(3.0)
+        assert f.count("atempo") == 2
+
+
+# ---------------------------------------------------------------------------
+# TTSEngine quality presets & speed routing
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestTTSEngineQuality:
+    """Unit tests for QUALITY_PRESETS and _NATIVE_SPEED_PROVIDERS constants."""
+
+    def test_piper_quality_mapping(self):
+        assert QUALITY_PRESETS["piper"]["fast"]["quality"] == "low"
+        assert QUALITY_PRESETS["piper"]["balanced"]["quality"] == "medium"
+        assert QUALITY_PRESETS["piper"]["best"]["quality"] == "high"
+
+    def test_openai_quality_mapping(self):
+        assert QUALITY_PRESETS["openai"]["fast"]["model"] == "tts-1"
+        assert QUALITY_PRESETS["openai"]["best"]["model"] == "tts-1-hd"
+
+    def test_bark_quality_mapping(self):
+        assert QUALITY_PRESETS["bark"]["fast"]["model"] == "small"
+        assert QUALITY_PRESETS["bark"]["best"]["model"] == "large"
+
+    def test_tortoise_quality_mapping(self):
+        assert QUALITY_PRESETS["tortoise"]["fast"]["preset"] == "ultra_fast"
+        assert QUALITY_PRESETS["tortoise"]["best"]["preset"] == "high_quality"
+
+    def test_native_speed_providers(self):
+        assert "piper" in _NATIVE_SPEED_PROVIDERS
+        assert "openai" in _NATIVE_SPEED_PROVIDERS
+        assert "elevenlabs" not in _NATIVE_SPEED_PROVIDERS
+        assert "bark" not in _NATIVE_SPEED_PROVIDERS
+
+
+# ---------------------------------------------------------------------------
+# generate --dry-run / --speed / --quality / --slides
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestGenerateCLIFlags:
+    """Tests for new high-level flags on `scholium generate`."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    @pytest.fixture
+    def minimal_md(self, tmp_path):
+        f = tmp_path / "test.md"
+        f.write_text(
+            "# Slide One\n\n::: notes\nHello world.\n:::\n\n# Slide Two\n\nNo narration here.\n"
+        )
+        return f
+
+    def test_dry_run_exits_zero(self, runner, minimal_md):
+        result = runner.invoke(cli, ["generate", str(minimal_md), "out.mp4", "--dry-run"])
+        assert result.exit_code == 0, result.output
+
+    def test_dry_run_shows_narration(self, runner, minimal_md):
+        result = runner.invoke(cli, ["generate", str(minimal_md), "out.mp4", "--dry-run"])
+        assert "Slide 1" in result.output
+        assert "Hello world" in result.output
+
+    def test_dry_run_shows_silent_slides(self, runner, minimal_md):
+        result = runner.invoke(cli, ["generate", str(minimal_md), "out.mp4", "--dry-run"])
+        assert "no narration" in result.output
+
+    def test_dry_run_with_quality_accepted(self, runner, minimal_md):
+        for val in ("fast", "balanced", "best"):
+            result = runner.invoke(
+                cli, ["generate", str(minimal_md), "out.mp4", "--dry-run", "--quality", val]
+            )
+            assert result.exit_code == 0, f"--quality {val} failed: {result.output}"
+
+    def test_speed_out_of_range_rejected(self, runner, minimal_md):
+        result = runner.invoke(cli, ["generate", str(minimal_md), "out.mp4", "--speed", "99"])
+        assert result.exit_code != 0
+
+    def test_quality_invalid_value_rejected(self, runner, minimal_md):
+        result = runner.invoke(
+            cli, ["generate", str(minimal_md), "out.mp4", "--quality", "ultra"]
+        )
+        assert result.exit_code != 0
+
+    def test_slides_invalid_format_rejected(self, runner, minimal_md):
+        result = runner.invoke(
+            cli, ["generate", str(minimal_md), "out.mp4", "--slides", "abc", "--dry-run"]
+        )
+        assert result.exit_code != 0
 
 
 # ---------------------------------------------------------------------------

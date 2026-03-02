@@ -15,7 +15,8 @@ voice: "Xb7hH8MSUJpSbSDYk0k2" # Voice name (provider-specific)
 # Install with: pip install scholium[piper]
 # Voices download automatically from HuggingFace on first use
 piper:
-  voice: "en_US-lessac-medium"
+  quality: "medium"    # low | medium | high
+  speed: 1.0           # 0.1–5.0 (1.0 = normal; lower = slower)
   # Available voices:
   # - en_US-lessac-medium (male, clear)
   # - en_US-amy-medium (female, clear)
@@ -43,6 +44,8 @@ elevenlabs:
   model: "eleven_multilingual_v2"
   voice: "Xb7hH8MSUJpSbSDYk0k2"  # Alice - Clear, Engaging Educator
   # voice: ZGuEOd751j7qVTkXR73w # Colin
+  # stability: 0.5         # 0.0–1.0 (higher = more consistent, lower = expressive)
+  # similarity_boost: 0.75 # 0.0–1.0 (how closely to match the reference voice)
 
 # OpenAI TTS settings
 # Install with: pip install scholium[openai]
@@ -53,6 +56,7 @@ elevenlabs:
 openai:
   api_key: ""  # Leave empty - use OPENAI_API_KEY environment variable
   model: "tts-1"  # Options: tts-1, tts-1-hd
+  speed: 1.0      # 0.25–4.0 (1.0 = normal)
   # Available voices: alloy, echo, fable, onyx, nova, shimmer
 
 # Bark TTS settings (high quality, slow)

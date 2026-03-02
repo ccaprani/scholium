@@ -21,6 +21,8 @@ class ElevenLabsProvider(TTSProvider):
         api_key: Optional[str] = None,
         model_id: str = "eleven_multilingual_v2",
         output_format: str = "mp3_44100_128",
+        stability: Optional[float] = None,
+        similarity_boost: Optional[float] = None,
     ) -> None:
         """Initialise the ElevenLabs provider.
 
@@ -29,6 +31,11 @@ class ElevenLabsProvider(TTSProvider):
                 environment variable when not supplied.
             model_id: ElevenLabs model ID to use for synthesis.
             output_format: Audio output format (e.g. ``'mp3_44100_128'``, ``'wav'``).
+            stability: Voice stability (0.0–1.0). Higher values produce more
+                consistent output; lower values are more expressive.  ``None``
+                uses the ElevenLabs default (~0.5).
+            similarity_boost: Similarity to the reference voice (0.0–1.0).
+                ``None`` uses the ElevenLabs default (~0.75).
 
         Raises:
             ValueError: If no API key is available from either source.
@@ -43,6 +50,8 @@ class ElevenLabsProvider(TTSProvider):
         self.client = ElevenLabs(api_key=api_key)
         self.model_id = model_id
         self.output_format = output_format
+        self.stability = stability
+        self.similarity_boost = similarity_boost
 
     def generate_audio(self, text: str, voice_config: Dict[str, Any], output_path: str) -> str:
         """Generate audio from text using the ElevenLabs API.
@@ -70,6 +79,14 @@ class ElevenLabsProvider(TTSProvider):
         model_id = voice_config.get("model", self.model_id)
         output_format = voice_config.get("output_format", self.output_format)
         voice_settings = voice_config.get("voice_settings")
+
+        # Build voice_settings from instance config if not supplied per-call
+        if not voice_settings and (self.stability is not None or self.similarity_boost is not None):
+            voice_settings = {}
+            if self.stability is not None:
+                voice_settings["stability"] = self.stability
+            if self.similarity_boost is not None:
+                voice_settings["similarity_boost"] = self.similarity_boost
 
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
