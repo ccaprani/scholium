@@ -117,8 +117,11 @@ Key Features
    * Piper - Fast, local, recommended for beginners
    * ElevenLabs - Highest quality cloud API
    * Coqui - Local voice cloning from audio samples
-   * OpenAI - Latest TTS models
-   * Bark - Highest quality local (slow)
+   * OpenAI - Cloud API with multiple built-in voices
+   * Bark - Expressive local synthesis (slow)
+   * F5-TTS - Fast zero-shot local voice cloning
+   * StyleTTS2 - Expressive diffusion-based local cloning
+   * Tortoise - Highest quality local voice cloning (slow)
 
 Indices and tables
 ==================
