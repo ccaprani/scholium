@@ -4,7 +4,7 @@
 
 **Prerequisites:**
 
-- Python 3.11 or higher
+- Python 3.9 or higher
 - Pandoc 2.9+
 - LaTeX (TeXLive or MiKTeX)
 - FFmpeg 4.0+
@@ -27,8 +27,8 @@ sudo apt-get install -y \
   texlive-latex-extra \
   texlive-fonts-recommended \
   ffmpeg \
-  python3.11 \
-  python3.11-venv
+  python3 \
+  python3-venv
 ```
 
 ### macOS
@@ -38,7 +38,7 @@ sudo apt-get install -y \
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install dependencies
-brew install pandoc mactex ffmpeg python@3.11
+brew install pandoc mactex ffmpeg python
 ```
 
 ### Windows
@@ -46,7 +46,7 @@ brew install pandoc mactex ffmpeg python@3.11
 Using Chocolatey:
 
 ```powershell
-choco install pandoc miktex ffmpeg python311
+choco install pandoc miktex ffmpeg python
 ```
 
 ## Install Scholium
@@ -75,7 +75,7 @@ pip install scholium[f5tts]
 # Multiple compatible providers at once
 pip install scholium[all]         # piper + elevenlabs + openai + f5tts
 
-# Providers with known Python 3.11+ dependency conflicts (install individually):
+# Providers with known dependency conflicts (install individually):
 pip install scholium[coqui]       # Coqui TTS - local voice cloning
 pip install scholium[bark]        # Bark - expressive local TTS
 pip install scholium[styletts2]   # StyleTTS2 - diffusion-based cloning
@@ -85,7 +85,7 @@ pip install scholium[tortoise]    # Tortoise - highest quality local cloning
 ### Virtual Environment (Recommended)
 
 ```bash
-python3.11 -m venv scholium-env
+python3 -m venv scholium-env
 source scholium-env/bin/activate  # On Windows: scholium-env\Scripts\activate
 
 pip install scholium[piper]
@@ -149,6 +149,34 @@ export OPENAI_API_KEY="your_key_here"
 ### Bark
 
 No additional setup. First generation downloads models (~1.5 GB).
+
+### F5-TTS
+
+No API key needed. Register a voice from a reference recording:
+
+```bash
+scholium train-voice --name my_voice --provider f5tts --sample recording.wav
+```
+
+For best results, place a `ref_text.txt` transcript of the reference clip alongside it in the voice directory.
+
+### StyleTTS2
+
+No API key needed. Register a voice from a reference recording:
+
+```bash
+scholium train-voice --name my_voice --provider styletts2 --sample recording.wav
+```
+
+### Tortoise
+
+No API key needed. Register a voice from one or more reference clips:
+
+```bash
+scholium train-voice --name my_voice --provider tortoise --sample recording.wav
+```
+
+Add extra `.wav` files to the voice directory for better quality — Tortoise uses up to 10 clips automatically.
 
 ## Managing API Keys
 
