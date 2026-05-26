@@ -62,6 +62,81 @@ scholium generate lecture.md output.mp4 --speed 0.9 --quality best
 
 ## Settings Reference
 
+### Slide backend
+
+```yaml
+slide_backend: "pandoc"   # pandoc | slidev | marp
+```
+
+Per-lecture override: add `slide-backend: marp` (Pandoc-style hyphen,
+matching `slide-level:`) to a lecture file's own YAML frontmatter, and
+that lecture will render with the named backend regardless of
+`config.yaml`.  CLI flag `--slide-backend` overrides everything.
+
+Each backend has its own settings section below.  All three accept a
+`frontmatter:` overlay merged into every generated deck — useful for
+title-slide metadata, language tags, and backend-specific tweaks.
+**Three keys are portable** (same name, same values, all three
+backends): `title`, `author`, `lang` (IETF tag).  Everything else is
+backend-specific — Pandoc's `aspectratio`/`header-includes`, Slidev's
+`colorSchema`/`canvasWidth`, Marp's `paginate`/`header`/`footer` — and
+is documented per-backend below.
+
+#### Pandoc
+
+```yaml
+pandoc:
+  # template: "beamer"     # Pandoc output format (default: beamer)
+  # dpi: 300               # PNG rasterisation DPI (default: 300)
+  frontmatter:             # merged via `--metadata-file`, overrides source .md
+    aspectratio: 169       # Beamer 16:9 deck
+    theme: "metropolis"    # Beamer theme
+    lang: "en-AU"
+    # header-includes: |
+    #   \usepackage{siunitx}
+```
+
+The legacy top-level `pandoc_template: beamer` is still honoured for
+backward compatibility; `Config._migrate_legacy()` lifts it into
+`pandoc.template` automatically.
+
+#### Slidev
+
+```yaml
+slidev:
+  theme: "default"                   # "default" → built-in (no theme package needed)
+  command: ["npx", "@slidev/cli"]    # how to invoke the Slidev CLI
+  timeout: 600                       # seconds for PNG export
+  with_clicks: false                 # export each click step as a separate PNG
+  # extra_args: ["--dark"]           # forwarded verbatim to `slidev export`
+  frontmatter:
+    colorSchema: "dark"              # auto | light | dark
+    htmlAttrs: { lang: "en-AU" }
+```
+
+#### Marp
+
+```yaml
+marp:
+  theme: "default"                          # default | gaia | uncover
+  command: ["npx", "@marp-team/marp-cli"]
+  paginate: false                           # show slide numbers
+  no_sandbox: true                          # add Chrome --no-sandbox automatically
+  # browser: "chrome"                       # chrome | edge | firefox | auto
+  # browser_path: "/path/to/chrome"         # explicit Chromium binary
+  # extra_args: ["--allow-local-files"]
+  frontmatter:
+    lang: "en-AU"
+    header: "Lecture 3"
+    footer: "Physics 101"
+```
+
+Run `scholium slides list` to confirm each backend's dependencies are
+in place; `scholium slides check <backend>` renders a 2-slide canned
+deck end-to-end.
+
+---
+
 ### TTS provider
 
 ```yaml
@@ -181,10 +256,39 @@ tortoise:
 
 ### Video
 
+`resolution` and `fps` are shared between slide rasterisation (the
+slide backends) and the final mp4 encode (ffmpeg) — one source of
+truth.
+
 ```yaml
 resolution: [1920, 1080]
 fps: 30
 ```
+
+The rest of the video pipeline lives under the `video:` section.  Run
+`scholium video list` to see which codecs and hardware-acceleration
+methods are compiled into your local ffmpeg, and `scholium video check`
+to encode a 2-second test clip with the configured settings.
+
+```yaml
+video:
+  codec: "libx264"          # libx264 | libx265 | libvpx-vp9 | libaom-av1 | h264_nvenc | …
+  preset: "medium"          # ultrafast … veryslow (x264/x265 only; ignored otherwise)
+  crf: 23                   # 0=lossless, 18=visually-lossless, 23=default, 28=tighter
+  pixel_format: "yuv420p"   # yuv420p = broadest player compatibility
+  audio_codec: "aac"        # aac | libopus | libmp3lame | flac | …
+  audio_bitrate: "192k"
+  extra_args: []            # forwarded verbatim to every ffmpeg call
+```
+
+**Hardware encoding:** switch `codec` to `h264_nvenc` (or
+`hevc_nvenc`) on an NVIDIA GPU for a 5–10× speed-up over libx264.
+`video list` reports whether your ffmpeg build supports the encoder
+before you risk a long render.
+
+**Power-user escape hatch:** anything ffmpeg accepts but Scholium
+doesn't expose as a named knob goes in `extra_args` — for example
+`extra_args: ["-movflags", "+faststart"]` for web-streamed mp4s.
 
 ---
 

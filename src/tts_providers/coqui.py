@@ -21,6 +21,7 @@ COQUI_AVAILABLE = CoquiTTS is not None
 class CoquiProvider(TTSProvider):
     """Coqui TTS provider for local text-to-speech with voice cloning."""
 
+    name = "coqui"
     SAMPLE_RATE: int = 24000
 
     def __init__(

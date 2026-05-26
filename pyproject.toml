@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scholium"
-version = "2026.2"
+version = "2026.3"
 description = "Generate educational videos from markdown slides with AI voice synthesis"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -96,10 +96,34 @@ tortoise = [
     "torchaudio>=2.0.0",
 ]
 
-# All TTS providers with known Python 3.11+ compatibility.
-# Excludes coqui, bark, styletts2, and tortoise-tts due to transitive
-# dependency conflicts on Python >= 3.11 — install those extras individually.
+# Slidev slide backend
+#
+# Slidev itself is a Node.js application, so there are no Python
+# dependencies to install beyond the base set.  This extra exists as an
+# opt-in marker for the docs and for symmetry with the other backends;
+# selecting it does not auto-install Node or Slidev.  See README for the
+# Node-side install:
+#     npm install -g @slidev/cli playwright-chromium
+#     npx playwright install chromium
+slidev = []
+
+# Marp slide backend
+#
+# Marp is also a Node.js application (@marp-team/marp-cli) and has no
+# Python deps.  See README for the Node-side install:
+#     npm install -g @marp-team/marp-cli
+marp = []
+
+# Everything pip can install plus opt-in markers for the Node-based
+# slide backends.  TTS providers covered: piper, elevenlabs, openai,
+# f5tts — i.e. those with known Python 3.11+ compatibility.  Excludes
+# coqui, bark, styletts2, tortoise-tts (transitive dep conflicts on
+# Python >= 3.11 — install those extras individually).  The slidev and
+# marp self-references add no pip deps (those backends are Node-side)
+# but mark the install as opted-in; see README for Node setup.
 all = [
+    "scholium[slidev]",
+    "scholium[marp]",
     "piper-tts>=1.2.0",
     "pathvalidate>=3.0.0",
     "elevenlabs>=1.0.0,<3.0.0",

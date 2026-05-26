@@ -12,6 +12,22 @@ pip install scholium[piper]
 
 For other TTS providers, see [TTS Providers](tts-providers.md).
 
+### Pre-flight check (optional but recommended)
+
+Before your first render, run the three doctor commands to confirm
+each subsystem is wired up correctly:
+
+```bash
+scholium slides list      # slide-rendering backends + their deps
+scholium voice list       # which TTS providers are installed
+scholium video list       # ffmpeg + codecs available
+```
+
+Each command prints `✅ ready` per row when the subsystem is good to go,
+or a one-line install hint when something's missing.  See the
+[CLI reference](cli.md#doctor-commands) for the full doctor surface
+including `check` smoke tests.
+
 ## Your First Video
 
 ### Step 1: Create Markdown File

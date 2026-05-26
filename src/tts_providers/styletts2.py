@@ -59,6 +59,7 @@ class StyleTTS2Provider(TTSProvider):
             from ``styletts2.model_path`` in ``config.yaml``).
     """
 
+    name = "styletts2"
     sample_rate: int = 24000
 
     def __init__(
@@ -195,12 +196,3 @@ class StyleTTS2Provider(TTSProvider):
         audio = AudioSegment.from_file(audio_path)
         return len(audio) / 1000.0
 
-    def get_info(self) -> dict:
-        return {
-            "name": "StyleTTS2",
-            "type": "local",
-            "quality": "very high",
-            "speed": "medium",
-            "requires_api_key": False,
-            "supports_voice_cloning": True,
-        }

@@ -23,9 +23,13 @@ your content is:
 - **Reproducible** across systems and collaborators
 - **Easy to maintain** semester after semester
 
-**Pandoc-native.** Scholium uses standard Pandoc/Beamer slide syntax, so the same
-source file renders as a PDF presentation with LaTeX/Beamer as well as a narrated video.
-You are not locked in.
+**Pluggable rendering, one source of truth.** Scholium reads a single
+markdown file with narration and renders it through whichever slide
+backend you choose — Pandoc/Beamer (LaTeX, PDF-friendly), Slidev (Vue,
+modern web typography), or Marp (markdown-it, lightweight web slides).
+Switching backend changes only the visual style; the source file and
+narration stay the same.  With the Pandoc backend you also get a real
+PDF deck out of the same source, so you're never locked in.
 
 **Narration as documentation.** The `:::notes:::` block is both the speaker notes in
 your slide deck and the narration script for the video. Writing them once produces both

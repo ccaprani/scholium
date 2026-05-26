@@ -1,5 +1,30 @@
 # Troubleshooting
 
+## First: run the doctor commands
+
+Most "X doesn't work" problems are diagnosed in seconds by the three
+subsystem doctor commands.  Run them before reading further:
+
+```bash
+scholium slides list      # slide-rendering backends (pandoc / slidev / marp)
+scholium voice list       # TTS providers (libraries + API keys)
+scholium video list       # ffmpeg + codecs + hardware acceleration
+```
+
+Each one prints `✅ ready` per row when the subsystem is good, or a
+one-line install hint pointing at the exact fix when it's not.  For
+deeper end-to-end checks (which actually drive the real pipeline):
+
+```bash
+scholium slides check      # render 2-slide canned decks via every backend
+scholium voice check       # synthesize a short phrase via the active provider
+scholium video check       # encode a 2-second clip via the configured codec
+```
+
+If a check fails, the error message is the provider's own — surface it
+in any bug report.  See the [CLI reference](user/cli.md#doctor-commands)
+for full details.
+
 ## Common Issues and Solutions
 
 ### Installation Problems

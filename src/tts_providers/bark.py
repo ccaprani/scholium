@@ -20,6 +20,8 @@ class BarkProvider(TTSProvider):
             e.g. ``"v2/en_speaker_6"`` (default).
     """
 
+    name = "bark"
+
     # TODO: align with the SAMPLE_RATE class pattern used by other providers;
     # this class attribute shadows the base sample_rate property, making the
     # self.SAMPLE_RATE instance attribute set in __init__ unreachable via property.
@@ -106,15 +108,3 @@ class BarkProvider(TTSProvider):
             voices.extend(f"v2/{lang}_speaker_{i}" for i in range(4))
         return voices
 
-    def get_info(self) -> dict:
-        """Return provider metadata."""
-        return {
-            "name": "Bark TTS",
-            "type": "local",
-            "requires_api_key": False,
-            "supports_voice_cloning": False,
-            "quality": "very-high",
-            "speed": "slow",
-            "current_voice": self.voice_preset,
-            "notes": "High quality but slow. Can generate non-speech sounds.",
-        }

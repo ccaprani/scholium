@@ -50,13 +50,29 @@ author: "CS 201"
 date: "2026-02-06"
 subtitle: "Big O Notation"
 institute: "University Name"
+slide-level: 2          # 1 (default) → `#` creates slides; 2 → `##` creates slides
+slide-backend: "marp"   # pandoc | slidev | marp — overrides config.yaml for THIS lecture
 title_notes: |
   [DUR 3s]
   Welcome to the lecture.
 ---
 ```
 
-`title_notes` — narration for the title slide. Without this, the title slide is silent.
+| Key | Type | Purpose |
+|-----|------|---------|
+| `title` | string | Lecture title (required) |
+| `author` | string | Author / instructor name |
+| `date` | string | Date string (free-form) |
+| `subtitle` | string | Sub-title for the title slide |
+| `institute` | string | Institute / course name |
+| `slide-level` | `1` or `2` | Which heading level creates a new slide page |
+| `slide-backend` | `pandoc` \| `slidev` \| `marp` | Per-lecture override of the slide renderer |
+| `title_notes` | string (block) | Narration for the title slide (omit → silent title) |
+
+`slide-backend:` in the source frontmatter lets each lecture declare its
+preferred renderer — useful when one project mixes Beamer-style and
+web-style decks.  Precedence: `--slide-backend` CLI flag → source
+`slide-backend:` → `config.yaml`'s `slide_backend:` → default `pandoc`.
 
 ## Creating Slides
 

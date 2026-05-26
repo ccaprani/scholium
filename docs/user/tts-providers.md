@@ -18,6 +18,34 @@ Scholium supports eight text-to-speech (TTS) providers spanning cloud APIs, fixe
 > **Note:** `pip install scholium[all]` installs only the four providers marked ✅ above (Piper, ElevenLabs, OpenAI, F5-TTS).
 > Coqui, Bark, StyleTTS2, and Tortoise have transitive dependencies that may conflict and must be installed individually.
 
+## Verifying a provider
+
+Scholium ships two doctor commands for the voice subsystem.  Use them
+to confirm your install works *before* a long render:
+
+```bash
+# Fast: which providers' Python libraries import + which API keys are set
+scholium voice list
+
+# Detailed info about one provider (deps, voices, quality/speed flags)
+scholium voice info piper
+
+# End-to-end: actually synthesize a short phrase via the configured provider
+scholium voice check
+
+# Or test a specific provider
+scholium voice check elevenlabs
+```
+
+`voice check` uses the same code path as `scholium generate`, so anything
+that works there will also work in a real render.  Cloud providers
+(ElevenLabs, OpenAI) make a real paid API call — expect a fraction of a
+cent per check.  Local providers vary from sub-second (Piper) to 30 s+
+(Bark, Tortoise).  Zero-shot providers (Coqui, F5-TTS, StyleTTS2,
+Tortoise) need either a registered voice or a `model_path:` configured;
+otherwise `voice check` fails early with the exact `train-voice`
+command to register one.
+
 ---
 
 ## Piper (Recommended for Getting Started)

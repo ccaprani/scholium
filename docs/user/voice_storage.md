@@ -57,8 +57,8 @@ my-project/
 ├── voices/            # All voices stored here
 │   ├── piper/
 │   └── coqui/
-├── slides.md
-└── transcript.txt
+├── slides.md          # narration lives in :::notes::: blocks inside this file
+└── config.yaml        # optional — overrides for backend / TTS / voice / etc.
 ```
 
 ### Benefits
@@ -99,7 +99,7 @@ cp config.yaml my-config.yaml
 # Edit my-config.yaml to set voices_dir
 
 # Use it
-scholium generate slides.md transcript.txt output.mp4 --config my-config.yaml
+scholium generate slides.md output.mp4 --config my-config.yaml
 ```
 
 ## How It Works
@@ -143,12 +143,12 @@ cfg.ensure_dirs()  # Creates voices_dir, temp_dir, output_dir
 
 ```bash
 # First time using a voice
-scholium generate slides.md transcript.txt output.mp4 --provider piper --voice en_US-lessac-medium
+scholium generate slides.md output.mp4 --provider piper --voice en_US-lessac-medium
 # 📥 Downloading Piper voice: en_US-lessac-medium
 # ✓ Voice downloaded to ~/.local/share/scholium/voices/piper/
 
 # Subsequent uses
-scholium generate slides.md transcript.txt output.mp4 --provider piper --voice en_US-lessac-medium
+scholium generate slides.md output.mp4 --provider piper --voice en_US-lessac-medium
 # Uses cached voice, no download
 ```
 

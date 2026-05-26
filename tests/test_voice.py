@@ -512,7 +512,7 @@ class TestListVoicesCLI:
 
     def test_local_library_empty(self, runner):
         """Without --provider and no voices, reports no voices found."""
-        with patch("scholium.main.VoiceManager") as mock_vm:
+        with patch("scholium.cli.list_voices.VoiceManager") as mock_vm:
             mock_vm.return_value.list_voices.return_value = []
             result = runner.invoke(
                 cli,
@@ -561,7 +561,7 @@ class TestListVoicesCLI:
 
         monkeypatch.setenv("ELEVENLABS_API_KEY", "fake_key")
 
-        with patch("scholium.main._list_elevenlabs_voices") as mock_lister:
+        with patch("scholium.cli.list_voices._list_elevenlabs_voices") as mock_lister:
             def side_effect(cfg):
                 _click.echo("ElevenLabs voices (2 total):")
                 _click.echo("  Alice                           aaa111")
@@ -597,3 +597,130 @@ class TestListVoicesCLI:
             )
         assert result.exit_code != 0
         assert "elevenlabs" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# voice check — end-to-end smoke test command
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestVoiceCheckCLI:
+    """``scholium voice check`` exercises the same code path that
+    ``generate`` uses for TTS, so the CLI test mocks TTSEngine and
+    confirms the wiring: argument parsing, voice-config resolution,
+    success/failure surfacing, and the cleanup of temp files."""
+
+    @pytest.fixture
+    def runner(self):
+        return CliRunner()
+
+    def test_check_success_with_real_audio(self, runner, tmp_path, monkeypatch):
+        """When TTSEngine returns successfully and writes a non-empty
+        file, the command exits 0 and reports the file size."""
+        def _fake_engine_init(self, **kwargs):
+            self.provider = MagicMock()
+            self.provider.get_audio_duration.return_value = 0.75
+
+        def _fake_generate_audio(self, text, voice_config, output_path):
+            Path(output_path).write_bytes(b"RIFFfake-wav-bytes" * 16)
+            return output_path
+
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.__init__", _fake_engine_init
+        )
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.generate_audio", _fake_generate_audio
+        )
+
+        result = runner.invoke(
+            cli, ["voice", "check", "piper", "--config", "nonexistent.yaml"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Synthesised" in result.output
+        assert "0.75s" in result.output  # duration surfaced
+        assert "Voice pipeline ready" in result.output
+
+    def test_check_init_failure_clean_error(self, runner, monkeypatch):
+        """A TTSEngine that raises on init produces a friendly ClickException."""
+        def _raises(self, **kwargs):
+            raise RuntimeError("simulated init failure")
+
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.__init__", _raises
+        )
+
+        result = runner.invoke(
+            cli, ["voice", "check", "piper", "--config", "nonexistent.yaml"]
+        )
+        assert result.exit_code != 0
+        assert "could not be loaded" in result.output
+        assert "voice list" in result.output  # points user at the right doctor
+
+    def test_check_synthesis_failure_surfaces_provider_error(
+        self, runner, monkeypatch
+    ):
+        """When the provider raises during synthesis, the provider's
+        own error message is shown — not swallowed by Click."""
+        def _fake_engine_init(self, **kwargs):
+            self.provider = MagicMock()
+
+        def _raises_synth(self, text, voice_config, output_path):
+            raise RuntimeError("provider-specific synthesis error")
+
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.__init__", _fake_engine_init
+        )
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.generate_audio", _raises_synth
+        )
+
+        result = runner.invoke(
+            cli, ["voice", "check", "piper", "--config", "nonexistent.yaml"]
+        )
+        assert result.exit_code != 0
+        assert "provider-specific synthesis error" in result.output
+
+    def test_check_zero_shot_without_voice_fails_cleanly(self, runner):
+        """A zero-shot provider with no registered voice and no
+        model_path in config surfaces the train-voice hint — without
+        even loading TTSEngine."""
+        result = runner.invoke(
+            cli, ["voice", "check", "coqui", "--config", "nonexistent.yaml"]
+        )
+        assert result.exit_code != 0
+        assert "Voice" in result.output and "not found" in result.output
+        assert "scholium train-voice" in result.output
+
+    def test_check_keep_preserves_file(self, runner, tmp_path, monkeypatch):
+        """``--keep PATH`` writes the smoke-test audio to PATH and doesn't
+        unlink it on success."""
+        keep_path = tmp_path / "kept.wav"
+
+        def _fake_engine_init(self, **kwargs):
+            self.provider = MagicMock()
+            self.provider.get_audio_duration.return_value = 1.0
+
+        def _fake_generate_audio(self, text, voice_config, output_path):
+            Path(output_path).write_bytes(b"RIFFfake" * 4)
+            return output_path
+
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.__init__", _fake_engine_init
+        )
+        monkeypatch.setattr(
+            "scholium.cli.voice.TTSEngine.generate_audio", _fake_generate_audio
+        )
+
+        result = runner.invoke(
+            cli,
+            [
+                "voice", "check", "piper",
+                "--config", "nonexistent.yaml",
+                "--keep", str(keep_path),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert keep_path.exists()
+        assert keep_path.stat().st_size > 0
+        assert str(keep_path) in result.output  # path reported in output

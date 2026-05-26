@@ -26,7 +26,8 @@ Generate an instructional video from markdown slides with embedded narration.
 | `--config` | Path to configuration file | `config.yaml` |
 | `--speed RATE` | Speech rate multiplier (0.1–5.0; 1.0=normal, 0.9=10% slower) | from config |
 | `--quality PRESET` | Quality preset: `fast`, `balanced`, `best` | from config |
-| `--slides RANGE` | Process only a subset of slides, e.g. `5` or `3-7` (1-indexed pages) | all |
+| `--slide-backend` | Slide-rendering backend: `pandoc`, `slidev`, or `marp` | from config |
+| `--slide-range RANGE` | Process only a subset of slides, e.g. `5` or `3-7` (1-indexed pages) | all |
 | `--dry-run` | Parse narration and print it; skip all generation | false |
 | `--resume` | Skip audio generation for slides whose temp files already exist | false |
 | `--section-duration` | Duration for silent slides (seconds) | `3.0` |
@@ -55,7 +56,7 @@ Generate an instructional video from markdown slides with embedded narration.
 > | styletts2 | 3 diffusion steps | 5 steps | 10 steps |
 > | f5tts | `vocoder: vocos` | `vocoder: vocos` | `vocoder: bigvgan` |
 >
-> Run `scholium providers info PROVIDER` to see the exact mapping for your provider.
+> Run `scholium voice info PROVIDER` to see the exact mapping for your provider.
 
 > **Note on `--speed`:** For `piper` and `openai`, speed is passed natively to the provider. For all other providers, Scholium applies a pitch-preserving time-stretch via ffmpeg's `atempo` filter after generation.
 
@@ -78,10 +79,13 @@ scholium generate lecture.md output.mp4 --speed 0.9 --quality best
 scholium generate lecture.md output.mp4 --dry-run
 
 # Re-generate only slide 5
-scholium generate lecture.md output.mp4 --slides 5
+scholium generate lecture.md output.mp4 --slide-range 5
 
 # Re-generate slides 3 through 7
-scholium generate lecture.md output.mp4 --slides 3-7
+scholium generate lecture.md output.mp4 --slide-range 3-7
+
+# Render with a specific slide backend
+scholium generate lecture.md output.mp4 --slide-backend marp
 
 # Resume an interrupted run (skips existing audio files in ./temp/)
 scholium generate lecture.md output.mp4 --resume --keep-temp
@@ -284,26 +288,134 @@ scholium config show --path ~/lectures/config.yaml
 
 ---
 
-## `scholium providers list`
+## Doctor commands
+
+Three subsystem groups — `slides`, `voice`, `video` — provide symmetric
+inspection and end-to-end smoke-test commands.  Run these once on a new
+machine, and any time you change your install, to confirm every external
+dependency works before kicking off a long render.
+
+| Group | `list` (fast probe) | `check` / `info` |
+|-------|---------------------|------------------|
+| `slides` | Pandoc + LaTeX, Slidev launcher + Playwright, Marp launcher + Chrome | `check [backend]` — render a 2-slide canned deck |
+| `voice` | Per-provider Python lib + API key | `info <provider>` (details), `check [provider]` — synthesize a short phrase |
+| `video` | ffmpeg binary, configured codec, hwaccels | `check` — encode a 2-second clip via the configured pipeline |
+
+The `list` subcommands are fast (no subprocess spawning beyond
+`--version`); the `check` subcommands actually drive the real backend
+through the same code path `scholium generate` uses, so anything that
+breaks `check` will also break a real render.
+
+### `scholium slides list`
 
 ```bash
-scholium providers list
+scholium slides list [--config PATH]
 ```
 
-Show all available TTS providers and their installation status.
+Probe each slide-rendering backend's external dependencies (Pandoc
+binary + LaTeX engine; Node.js + Slidev launcher + Playwright Chromium;
+Node.js + Marp launcher + Chrome binary).  Marks the currently-active
+backend and prints a `✅ ready` / `⚠ missing` summary per row.
+
+### `scholium slides check`
+
+```bash
+scholium slides check [BACKEND] [--config PATH] [--keep DIR]
+```
+
+Render a canned 2-slide deck end-to-end through one slide backend (or
+all three if `BACKEND` is omitted).  Reports PNG dimensions + filenames.
+`--keep DIR` preserves the rendered output for inspection.
+
+```bash
+scholium slides check                  # smoke-test all three
+scholium slides check slidev           # just slidev
+scholium slides check marp --keep ./smoke-out
+```
 
 ---
 
-## `scholium providers info`
+### `scholium voice list`
 
 ```bash
-scholium providers info PROVIDER
+scholium voice list [--config PATH]
 ```
 
-Show detailed information about a specific provider.
+Probe each TTS provider's install-level dependencies: whether the
+Python library imports, and (for cloud providers) whether the API key
+is set via environment variable or under the provider's section in
+`config.yaml`.  Marks the currently-active provider.
+
+### `scholium voice info`
 
 ```bash
-scholium providers info f5tts
+scholium voice info PROVIDER [--config PATH]
+```
+
+Show detailed information about one TTS provider — type, quality,
+speed, voice cloning support, dependency probes, install command,
+known voices, and the `--speed` / `--quality` flag mapping.
+
+```bash
+scholium voice info f5tts
+```
+
+### `scholium voice check`
+
+```bash
+scholium voice check [PROVIDER] [--config PATH] [--keep PATH]
+```
+
+Synthesize a short canned phrase (`"Scholium voice check."`) via the
+configured (or specified) provider — same code path `scholium generate`
+uses for TTS, so anything that breaks here will also break a real
+render.  Reports the audio duration and file size.  `--keep PATH`
+preserves the `.wav` for inspection.
+
+Default tests **only the configured provider** (unlike `slides check`,
+which loops all backends): cloud providers cost money per character,
+and local providers vary from sub-second (piper) to 30 s+ (bark,
+tortoise).  Zero-shot providers (coqui, f5tts, styletts2, tortoise)
+need either a registered voice or a `model_path:` configured —
+`voice check` fails early with the `train-voice` command to fix it if
+neither is set.
+
+```bash
+scholium voice check                   # use the configured provider
+scholium voice check openai            # test a specific provider
+scholium voice check piper --keep ./voice-check.wav
+```
+
+---
+
+### `scholium video list`
+
+```bash
+scholium video list [--config PATH]
+```
+
+Probe ffmpeg: binary version, whether the configured `video.codec`
+and `video.audio_codec` actually exist in your ffmpeg build, the
+list of common video encoders available (libx264, libx265, libvpx-vp9,
+libaom-av1, h264_nvenc, h264_vaapi, …), and the hardware-acceleration
+methods (cuda, vaapi, nvenc, …).  Handy when deciding whether to
+switch on hardware encoding for a 5–10× speed-up.
+
+### `scholium video check`
+
+```bash
+scholium video check [--config PATH] [--keep PATH]
+```
+
+End-to-end smoke test: encode a 2-second clip using the configured
+codec / preset / crf / audio_codec, generated from `lavfi` test
+sources so no input files are needed.  Surfaces ffmpeg's actual error
+on failure ("unknown encoder", "GPU not available", etc.) before a
+long render hits it.
+
+```bash
+scholium video check                   # use the configured pipeline
+scholium video check --keep ./test.mp4
 ```
 
 ---
@@ -315,6 +427,31 @@ Use `scholium config init` to generate a fully-annotated `config.yaml`, or creat
 For a complete reference of every setting — including provider-specific speed and quality controls — see [Advanced Configuration](advanced-config.md).
 
 ```yaml
+# Slide-rendering backend: pandoc | slidev | marp
+# (per-lecture override possible via `slide-backend: marp` in the source .md's frontmatter)
+slide_backend: "pandoc"
+
+# Per-backend settings — only the section matching slide_backend is used.
+pandoc:
+  # template: "beamer"     # Pandoc output format
+  # dpi: 300               # PNG rasterisation DPI
+  frontmatter: {}          # extra YAML metadata, merged via --metadata-file
+
+slidev:
+  theme: "default"
+  command: ["npx", "@slidev/cli"]
+  timeout: 600
+  with_clicks: false
+  frontmatter: {}
+
+marp:
+  theme: "default"                         # default | gaia | uncover
+  command: ["npx", "@marp-team/marp-cli"]
+  paginate: false
+  no_sandbox: true                         # add Chrome --no-sandbox automatically
+  # browser_path: "/path/to/chrome"        # explicit Chromium binary
+  frontmatter: {}
+
 # TTS settings
 tts_provider: "piper"
 voice: "en_US-lessac-medium"
@@ -364,8 +501,18 @@ timing:
   silent_slide_duration: 3.0
 
 # Video settings
-resolution: [1920, 1080]
+resolution: [1920, 1080]   # shared with slide rasterisation
 fps: 30
+
+# Video encoding (ffmpeg) — run `scholium video list` to see what your build supports
+video:
+  codec: "libx264"          # libx264 | libx265 | libvpx-vp9 | libaom-av1 | h264_nvenc | …
+  preset: "medium"          # ultrafast … veryslow (x264/x265 only)
+  crf: 23                   # 18=visually-lossless, 23=default
+  pixel_format: "yuv420p"
+  audio_codec: "aac"
+  audio_bitrate: "192k"
+  extra_args: []            # forwarded verbatim to every ffmpeg call
 
 # Paths
 voices_dir: "~/.local/share/scholium/voices"
