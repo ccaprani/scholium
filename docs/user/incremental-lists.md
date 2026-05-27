@@ -135,7 +135,7 @@ Then we'll discuss practical applications.
 ```markdown
 # Installation Steps
 
->- Install Python 3.9+
+>- Install Python 3.11+
 >- Install Pandoc and LaTeX
 >- Run pip install scholium[piper]
 >- Verify with scholium --version

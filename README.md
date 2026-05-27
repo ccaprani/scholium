@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.python.org/downloads/"><img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9+-blue.svg"></a>
+  <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11+-blue.svg"></a>
   <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
   <a href="https://ccaprani.github.io/scholium"><img alt="Docs" src="https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg"></a>
 </p>
@@ -33,7 +33,7 @@ Convert markdown slides with embedded narration into professional videos. Perfec
 ## Quick Start
 
 ```bash
-# 1. Install (requires Python 3.9+, pandoc, ffmpeg)
+# 1. Install (requires Python 3.11+, pandoc, ffmpeg)
 pip install scholium[piper]
 
 # 2. Create a markdown file with embedded narration

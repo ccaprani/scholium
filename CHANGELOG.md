@@ -109,10 +109,15 @@ match.
   (Marp was missing).
 - **Loop-variable shadowing** of the outer `voice` Click group in
   `cli/voice.py`.
-- **Python version inconsistency** — README badge claimed 3.11+ while
-  `pyproject.toml` says `>=3.9`.  Aligned the docs to 3.9+; the
-  qualifier sentence about TTS providers having transitive conflicts
-  *on* Python 3.11+ remains intact in the README.
+- **Python version inconsistency** — `pyproject.toml` declared
+  `>=3.9` aspirationally, but the new `voice list/info` tests rely on
+  `unittest.mock.patch` resolution semantics that only behave
+  correctly on Python ≥ 3.11 (older versions resolve
+  `scholium.cli.list_voices` to the shadowed Click command instead of
+  the submodule).  Aligned `requires-python`, the CI matrix, README
+  badge, and docs all to **3.11+**.  The qualifier sentence about
+  some TTS providers having transitive conflicts on Python 3.11+
+  remains intact in the README.
 - **Stale `transcript.txt` argument** in `scholium generate ...`
   examples throughout `docs/user/voice_storage.md`.
 - **Out-of-sync `config.yaml` references** — `docs/user/cli.md`,

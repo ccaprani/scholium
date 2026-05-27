@@ -36,9 +36,9 @@ Scholium Documentation
 
 Scholium transforms markdown slides with embedded ``:::notes:::`` blocks into professional narrated instructional videos using AI voice synthesis.
 
-.. image:: https://img.shields.io/badge/python-3.9+-blue.svg
+.. image:: https://img.shields.io/badge/python-3.11+-blue.svg
    :target: https://www.python.org/downloads/
-   :alt: Python 3.9+
+   :alt: Python 3.11+
 
 .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
    :target: https://opensource.org/licenses/MIT
