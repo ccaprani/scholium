@@ -60,6 +60,7 @@ class TortoiseProvider(TTSProvider):
             files in the same directory are used as conditioning clips.
     """
 
+    name = "tortoise"
     sample_rate: int = 24000
 
     def __init__(
@@ -193,12 +194,3 @@ class TortoiseProvider(TTSProvider):
         audio = AudioSegment.from_file(audio_path)
         return len(audio) / 1000.0
 
-    def get_info(self) -> dict:
-        return {
-            "name": "Tortoise TTS",
-            "type": "local",
-            "quality": "very high",
-            "speed": "slow",
-            "requires_api_key": False,
-            "supports_voice_cloning": True,
-        }

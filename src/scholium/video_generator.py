@@ -1,25 +1,104 @@
 """Video generation using ffmpeg."""
 
+import functools
+import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
+
+from scholium.probes import Probe, short_version
 
 __all__ = ["VideoGenerator"]
+
+
+# H.264-family encoders that accept ``-tune stillimage`` (a useful
+# optimisation for static-slide footage).  Other codecs reject the flag.
+_STILLIMAGE_TUNE_ENCODERS = frozenset({"libx264", "libx264rgb", "libx265"})
+
+# Encoder-line shape from ``ffmpeg -encoders``:
+#     " V..... libx264              H.264..."
+# The 6-char flag block starts with V/A/S followed by 5 chars of flags;
+# the second whitespace-separated token is the encoder name.
+_ENCODER_LINE_RE = re.compile(r"^\s+[VAS]\S{5}\s+(\S+)\s")
 
 
 class VideoGenerator:
     """Generates videos from slides and audio using ffmpeg."""
 
-    def __init__(self, resolution: tuple = (1920, 1080), fps: int = 30):
+    def __init__(
+        self,
+        resolution: tuple = (1920, 1080),
+        fps: int = 30,
+        video_config: Optional[Dict[str, Any]] = None,
+    ):
         """Initialize video generator.
 
         Args:
-            resolution: Video resolution as (width, height)
-            fps: Frames per second
+            resolution: Video resolution as ``(width, height)``.
+            fps: Frames per second.
+            video_config: Optional ``video:`` config section.  Recognised
+                keys: ``codec``, ``preset``, ``crf``, ``pixel_format``,
+                ``audio_codec``, ``audio_bitrate``, ``extra_args``.  Any
+                unknown keys are ignored.
         """
         self.resolution = resolution
         self.fps = fps
+        cfg = video_config or {}
+        self.codec: str = cfg.get("codec", "libx264")
+        self.preset: str = cfg.get("preset", "medium")
+        self.crf: int = int(cfg.get("crf", 23))
+        self.pixel_format: str = cfg.get("pixel_format", "yuv420p")
+        self.audio_codec: str = cfg.get("audio_codec", "aac")
+        self.audio_bitrate: str = str(cfg.get("audio_bitrate", "192k"))
+        self.extra_args: List[str] = list(cfg.get("extra_args", []))
+
+    # ── Diagnostics ──────────────────────────────────────────────────────
+
+    def probe_dependencies(self) -> List[Probe]:
+        """Probe ffmpeg and verify configured codecs are available.
+
+        Mirrors :meth:`SlideBackend.probe_dependencies` so the CLI's
+        ``video list`` doctor command can render the results identically.
+        """
+        probes: List[Probe] = []
+
+        ffmpeg_path = shutil.which("ffmpeg")
+        if not ffmpeg_path:
+            probes.append(
+                Probe(
+                    "ffmpeg binary",
+                    False,
+                    "install via your OS package manager (apt/brew/etc.); see https://ffmpeg.org/download.html",
+                )
+            )
+            return probes  # nothing else we can check without ffmpeg
+
+        version = short_version(["ffmpeg", "-version"])
+        probes.append(
+            Probe("ffmpeg binary", True, f"{ffmpeg_path}" + (f" ({version})" if version else ""))
+        )
+
+        encoders = _ffmpeg_encoders()
+
+        if self.codec in encoders:
+            probes.append(Probe(f"Video codec ({self.codec})", True, "available"))
+        else:
+            hint = _suggest_alternatives(self.codec, encoders, _COMMON_VIDEO_ENCODERS)
+            probes.append(
+                Probe(f"Video codec ({self.codec})", False, f"not in ffmpeg -encoders.  {hint}")
+            )
+
+        if self.audio_codec in encoders:
+            probes.append(Probe(f"Audio codec ({self.audio_codec})", True, "available"))
+        else:
+            hint = _suggest_alternatives(self.audio_codec, encoders, _COMMON_AUDIO_ENCODERS)
+            probes.append(
+                Probe(f"Audio codec ({self.audio_codec})", False, f"not in ffmpeg -encoders.  {hint}")
+            )
+
+        return probes
 
     def create_video(
         self,
@@ -161,28 +240,19 @@ class VideoGenerator:
             audio_filter = ",".join(filters)
             cmd.extend(["-af", audio_filter])
 
+        cmd.extend(["-t", str(total_duration)])
+        cmd.extend(self._video_encode_args())
         cmd.extend(
             [
-                "-t",
-                str(total_duration),  # Total duration
-                "-c:v",
-                "libx264",  # Video codec
-                "-tune",
-                "stillimage",  # Optimize for still images
-                "-pix_fmt",
-                "yuv420p",  # Pixel format
-                "-vf",
-                f"scale={self.resolution[0]}:{self.resolution[1]}",
-                "-r",
-                str(self.fps),
                 "-c:a",
-                "aac",  # Audio codec
+                self.audio_codec,
                 "-b:a",
-                "192k",  # Audio bitrate
-                "-shortest",  # End when shortest input ends
-                output_path,
+                self.audio_bitrate,
+                "-shortest",
             ]
         )
+        cmd.extend(self.extra_args)
+        cmd.append(output_path)
 
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -216,12 +286,12 @@ class VideoGenerator:
             cmd.extend(
                 [
                     "-i",
-                    audio_path,  # Input audio
+                    audio_path,
                     "-c:a",
-                    "aac",  # Audio codec
+                    self.audio_codec,
                     "-b:a",
-                    "192k",  # Audio bitrate
-                    "-shortest",  # End when shortest input ends
+                    self.audio_bitrate,
+                    "-shortest",
                 ]
             )
         else:
@@ -231,27 +301,15 @@ class VideoGenerator:
                     "-f",
                     "lavfi",
                     "-i",
-                    "anullsrc=channel_layout=stereo:sample_rate=44100",  # Generate silent audio
+                    "anullsrc=channel_layout=stereo:sample_rate=44100",
                     "-c:a",
-                    "aac",
+                    self.audio_codec,
                 ]
             )
 
-        cmd.extend(
-            [
-                "-c:v",
-                "libx264",  # Video codec
-                "-tune",
-                "stillimage",  # Optimize for still images
-                "-pix_fmt",
-                "yuv420p",  # Pixel format for compatibility
-                "-vf",
-                f"scale={self.resolution[0]}:{self.resolution[1]}",  # Scale to resolution
-                "-r",
-                str(self.fps),  # Frame rate
-                output_path,
-            ]
-        )
+        cmd.extend(self._video_encode_args())
+        cmd.extend(self.extra_args)
+        cmd.append(output_path)
 
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -259,6 +317,33 @@ class VideoGenerator:
             raise RuntimeError(f"Failed to create clip: {e.stderr}")
         except FileNotFoundError:
             raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
+
+    def _video_encode_args(self) -> List[str]:
+        """Build the shared video-encode flags used by both clip builders.
+
+        Emits ``-c:v``, optional ``-tune stillimage`` (only for h264/h265
+        encoders that accept it), ``-preset``, ``-crf``, ``-pix_fmt``,
+        the scale filter, and the output framerate.  Codec-specific
+        knobs the user wants beyond this set go in ``extra_args``.
+        """
+        args: List[str] = ["-c:v", self.codec]
+        if self.codec in _STILLIMAGE_TUNE_ENCODERS:
+            args.extend(["-tune", "stillimage"])
+        args.extend(
+            [
+                "-preset",
+                self.preset,
+                "-crf",
+                str(self.crf),
+                "-pix_fmt",
+                self.pixel_format,
+                "-vf",
+                f"scale={self.resolution[0]}:{self.resolution[1]}",
+                "-r",
+                str(self.fps),
+            ]
+        )
+        return args
 
     def _concatenate_clips(self, clip_paths: List[str], output_path: str, temp_dir: str):
         """Concatenate multiple video clips.
@@ -294,3 +379,78 @@ class VideoGenerator:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to concatenate clips: {e.stderr}")
+
+
+# ── ffmpeg capability probing (used by ``video list`` and probe_dependencies) ──
+
+# Common encoders the doctor command surfaces as alternatives when the
+# configured one isn't installed.  Not exhaustive — just the names most
+# users care about.
+_COMMON_VIDEO_ENCODERS = (
+    "libx264",
+    "libx265",
+    "libvpx-vp9",
+    "libaom-av1",
+    "h264_nvenc",
+    "hevc_nvenc",
+    "h264_vaapi",
+    "h264_videotoolbox",
+)
+
+_COMMON_AUDIO_ENCODERS = (
+    "aac",
+    "libmp3lame",
+    "libopus",
+    "libvorbis",
+    "flac",
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _ffmpeg_encoders() -> Set[str]:
+    """Return the set of encoder names supported by the local ffmpeg."""
+    try:
+        res = subprocess.run(
+            ["ffmpeg", "-encoders", "-hide_banner"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return set()
+    encoders: Set[str] = set()
+    for line in res.stdout.splitlines():
+        m = _ENCODER_LINE_RE.match(line)
+        if m:
+            encoders.add(m.group(1))
+    return encoders
+
+
+@functools.lru_cache(maxsize=1)
+def _ffmpeg_hwaccels() -> List[str]:
+    """Return the list of hwaccel names supported by the local ffmpeg."""
+    try:
+        res = subprocess.run(
+            ["ffmpeg", "-hwaccels", "-hide_banner"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return []
+    hwaccels: List[str] = []
+    for line in res.stdout.splitlines():
+        line = line.strip()
+        # Skip the "Hardware acceleration methods:" header and blank lines.
+        if not line or line.endswith(":"):
+            continue
+        hwaccels.append(line)
+    return hwaccels
+
+
+def _suggest_alternatives(missing: str, available: Set[str], commonly: tuple) -> str:
+    """Build a "did you mean / try one of" hint for a missing codec name."""
+    suggestions = [enc for enc in commonly if enc in available and enc != missing]
+    if suggestions:
+        return f"Available alternatives: {', '.join(suggestions)}."
+    return "No common alternatives available — check `ffmpeg -encoders`."

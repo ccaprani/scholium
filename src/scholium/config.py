@@ -9,13 +9,41 @@ from typing import Any, Optional, Dict
 __all__ = ["Config"]
 
 from tts_providers import VALID_PROVIDERS
+from scholium.slides import VALID_BACKENDS
 
 
 class Config:
     """Manages application configuration."""
 
     DEFAULT_CONFIG = {
+        "slide_backend": "pandoc",
+        # Legacy top-level key, still honoured.  New schema puts the same
+        # value under ``pandoc.template`` (see the ``pandoc:`` section
+        # below).  Hard-coded defaults for template/dpi live in
+        # PandocBackend itself; the section here exists so users have a
+        # discoverable place to add ``frontmatter:`` overlays.
         "pandoc_template": "beamer",
+        "pandoc": {
+            "frontmatter": {},
+        },
+        "slidev": {
+            "theme": "default",
+            "command": ["npx", "@slidev/cli"],
+            "timeout": 600,
+            "with_clicks": False,
+            "extra_args": [],
+            "frontmatter": {},
+        },
+        "marp": {
+            "theme": "default",
+            "command": ["npx", "@marp-team/marp-cli"],
+            "paginate": False,
+            "no_sandbox": True,
+            "browser": None,
+            "browser_path": None,
+            "extra_args": [],
+            "frontmatter": {},
+        },
         "tts_provider": "piper",
         "voice": "en_US-lessac-medium",
         "piper": {"quality": "medium", "speed": 1.0},
@@ -28,6 +56,20 @@ class Config:
         "coqui": {"model": "tts_models/multilingual/multi-dataset/xtts_v2"},
         "openai": {"api_key": "", "model": "tts-1", "speed": 1.0},
         "bark": {"model": "small"},
+        "f5tts": {
+            "model": "F5-TTS",   # F5-TTS | E2-TTS
+            "vocoder": "vocos",  # vocos | bigvgan
+        },
+        "styletts2": {
+            "alpha": 0.3,           # style blend, 0.0–1.0
+            "beta": 0.7,            # diffusion guidance, 0.0–1.0
+            "diffusion_steps": 5,   # 1–20
+        },
+        "tortoise": {
+            "preset": "fast",   # ultra_fast | fast | standard | high_quality
+            "kv_cache": True,
+            "half": True,
+        },
         "timing": {
             "default_pre_delay": 1.0,
             "default_post_delay": 2.0,
@@ -36,6 +78,15 @@ class Config:
         },
         "resolution": [1920, 1080],
         "fps": 30,
+        "video": {
+            "codec": "libx264",
+            "preset": "medium",
+            "crf": 23,
+            "pixel_format": "yuv420p",
+            "audio_codec": "aac",
+            "audio_bitrate": "192k",
+            "extra_args": [],
+        },
         "voices_dir": "~/.local/share/scholium/voices",
         "temp_dir": "./temp",
         "output_dir": "./output",
@@ -63,8 +114,25 @@ class Config:
         # Override with environment variables
         self._load_env_vars()
 
+        # Lift legacy schema entries into their new homes.
+        self._migrate_legacy()
+
         # Validate the merged config
         self._validate()
+
+    def _migrate_legacy(self) -> None:
+        """Lift legacy top-level keys into their current schema homes.
+
+        Older configs put the Pandoc template at the top level as
+        ``pandoc_template:``; the current schema places it under
+        ``pandoc.template``.  If the user only set the legacy key, copy
+        it into the new location so downstream consumers see one
+        schema.  Explicit ``pandoc.template`` always wins.
+        """
+        legacy_template = self.config.get("pandoc_template")
+        if legacy_template:
+            pandoc = self.config.setdefault("pandoc", {})
+            pandoc.setdefault("template", legacy_template)
 
     def _validate(self) -> None:
         """Validate configuration values.
@@ -78,6 +146,14 @@ class Config:
             raise ValueError(
                 f"Invalid tts_provider: '{provider}'. "
                 f"Valid options: {', '.join(sorted(VALID_PROVIDERS))}"
+            )
+
+        # Validate slide_backend
+        slide_backend = self.config.get("slide_backend")
+        if slide_backend and slide_backend not in VALID_BACKENDS:
+            raise ValueError(
+                f"Invalid slide_backend: '{slide_backend}'. "
+                f"Valid options: {', '.join(sorted(VALID_BACKENDS))}"
             )
 
         # Validate resolution

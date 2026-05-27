@@ -19,6 +19,7 @@ class OpenAIProvider(TTSProvider):
             for higher quality at greater cost).
     """
 
+    name = "openai"
     SAMPLE_RATE: int = 24000
 
     def __init__(self, api_key: Optional[str] = None, model: str = "tts-1", speed: float = 1.0):
@@ -104,14 +105,3 @@ class OpenAIProvider(TTSProvider):
         """Return list of available OpenAI voice names."""
         return ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
-    def get_info(self) -> dict:
-        """Return provider metadata."""
-        return {
-            "name": "OpenAI TTS",
-            "type": "cloud",
-            "requires_api_key": True,
-            "supports_voice_cloning": False,
-            "quality": "high",
-            "speed": "fast",
-            "current_model": self.model,
-        }

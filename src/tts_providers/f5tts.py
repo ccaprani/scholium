@@ -39,6 +39,7 @@ class F5TTSProvider(TTSProvider):
             library).
     """
 
+    name = "f5tts"
     sample_rate: int = 24000
 
     def __init__(
@@ -151,12 +152,3 @@ class F5TTSProvider(TTSProvider):
         audio = AudioSegment.from_file(audio_path)
         return len(audio) / 1000.0
 
-    def get_info(self) -> dict:
-        return {
-            "name": "F5-TTS",
-            "type": "local",
-            "quality": "very high",
-            "speed": "fast",
-            "requires_api_key": False,
-            "supports_voice_cloning": True,
-        }

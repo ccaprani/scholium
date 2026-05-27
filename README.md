@@ -75,7 +75,7 @@ scholium generate lecture.md lecture.mp4
 ## Key Features
 
 - 📝 **Unified Markdown Format**: Slides and narration in one file with `::: notes :::` blocks
-- 🎯 **Pandoc Integration**: Full Beamer support with `slide-level` for section-based lectures
+- 🖼 **Pluggable Slide Backends**: Pandoc/Beamer (default) or Slidev — same source, two looks
 - 🎤 **Multiple TTS Providers**: Piper (local), ElevenLabs (cloud), Coqui, F5-TTS, StyleTTS2, Tortoise (local voice cloning), OpenAI, Bark
 - ⏱️ **Flexible Timing**: Control pauses, slide duration, and pacing with simple directives
 - 🔧 **Production Ready**: Batch processing, validation, verbose output
@@ -113,9 +113,19 @@ pip install scholium[f5tts]       # Fast local voice cloning (zero-shot)
 pip install scholium[styletts2]   # Expressive local voice cloning
 pip install scholium[tortoise]    # Very high quality local voice cloning
 
-# All providers:
+# All Python-installable providers + slide-backend opt-ins:
 pip install scholium[all]
+
+# Slide backends individually (opt-in markers — Node-side install required, see Slide Backends below):
+pip install scholium[slidev]
+pip install scholium[marp]
 ```
+
+`scholium[all]` bundles the four ✅ TTS providers (Piper, ElevenLabs,
+OpenAI, F5-TTS) **and** the `slidev` and `marp` opt-ins.  Those last two
+have no Python deps to install — they exist as documentation markers
+— but you'll still need to install the Node.js side of each backend
+yourself (see [Slide Backends](#slide-backends)).
 
 ---
 
@@ -131,9 +141,18 @@ scholium generate slides.md output.mp4 [options]
 
 - `--voice NAME`: Voice ID to use (e.g., `en_US-lessac-medium` for Piper, an ElevenLabs voice ID, or a registered local voice name)
 - `--provider NAME`: TTS provider (`piper`, `elevenlabs`, `coqui`, `openai`, `bark`, `f5tts`, `styletts2`, `tortoise`)
+- `--slide-backend NAME`: Slide rendering backend (`pandoc`, `slidev`, or `marp`; default: `pandoc`)
+- `--slide-range RANGE`: Process only a subset of slides, e.g. `5` or `3-7` (1-indexed pages)
+- `--speed RATE`: Speech-rate multiplier (0.1–5.0; 1.0 = normal)
+- `--quality PRESET`: Audio quality preset (`fast`, `balanced`, `best`)
 - `--section-duration SECONDS`: Duration for silent section/TOC slides (default: 3.0)
+- `--dry-run`: Parse and print the narration; skip all generation
+- `--resume`: Skip audio generation for slides whose temp files already exist
+- `--audio-only`: Generate audio segments only (no video encoding)
 - `--verbose`: Show detailed progress
 - `--keep-temp`: Keep temporary files for debugging
+
+> See [`docs/user/cli.md`](docs/user/cli.md) for the full option reference, including the per-subsystem doctor commands (`slides`, `voice`, `video`).
 
 ### Example
 
@@ -322,6 +341,248 @@ Each bullet creates a new slide page. Split your narration into paragraphs (sepa
 
 ---
 
+## Slide Backends
+
+Scholium renders your markdown into slide PNGs through a pluggable
+backend.  The same source markdown can drive any backend — only the
+visual style differs.
+
+| Backend | Renderer | External deps | Strengths |
+|---------|----------|---------------|-----------|
+| **pandoc** *(default)* | Pandoc + Beamer → PDF → PNG | `pandoc`, LaTeX | LaTeX math, academic styling, no Node required |
+| **slidev** | [Slidev](https://sli.dev) (Vue) → headless Chromium → PNG | `node`, Slidev CLI, Playwright Chromium | Modern web typography, Shiki code highlighting, Mermaid, themes |
+| **marp** | [Marp](https://marp.app) (markdown-it) → Chromium → PNG | `node`, Marp CLI, a Chrome binary | Lightweight web-style slides, built-in themes, fastest non-Pandoc option |
+
+All three backends consume the **same Scholium markdown source** — only
+the visual style differs.  Pick whichever fits the lecture; switch any
+time without editing slide content.
+
+### Choosing a backend
+
+A backend can be selected at four levels — first match wins:
+
+1. **CLI flag:** `--slide-backend marp` (Pandoc-style hyphen)
+2. **Source `.md` frontmatter:** add `slide-backend: marp` alongside `slide-level:`
+3. **`config.yaml`:** the project-wide default `slide_backend: marp` (underscore)
+4. **Built-in default:** `pandoc`
+
+The source-frontmatter option lets each lecture file declare its
+preferred renderer.  Mix-and-match works fine — a Beamer-style lecture
+and a Marp-style lecture can live in the same project without anyone
+remembering which flag goes with which file.
+
+```markdown
+---
+title: "Newton's Laws"
+author: "Physics 101"
+slide-backend: marp     # this deck wants Marp; others fall back to config.yaml
+slide-level: 2
+---
+```
+
+```bash
+# Use whichever each .md declares (or config / default)
+scholium generate lecture.md lecture.mp4
+
+# Force a specific backend regardless of the source's frontmatter
+scholium generate lecture.md lecture.mp4 --slide-backend slidev
+```
+
+Verbose mode (`--verbose`) prints both the resolved backend and where
+the choice came from, e.g. `Slide backend: marp  (from lecture.md frontmatter)`.
+
+### Validating your install
+
+Each of the three subsystems (slide rendering, voice synthesis, video
+encoding) ships a doctor command pair: a fast `list` that probes
+external dependencies, and a `check` that drives the real pipeline
+end-to-end.  Run them once on a new machine — and any time you change
+your install — to confirm everything works before kicking off a long
+render:
+
+```bash
+# Slide-rendering subsystem
+scholium slides list              # probes per-backend dependencies
+scholium slides check slidev      # full 2-slide render via the real backend
+scholium slides check             # smoke-test all three slide backends
+
+# Voice (TTS) subsystem
+scholium voice list               # which TTS providers are installed + API-key status
+scholium voice info piper         # detailed info about one provider
+scholium voice check              # synthesize a short phrase via the configured provider
+scholium voice check elevenlabs   # synthesize via a specific provider
+
+# Video-encoding subsystem (ffmpeg)
+scholium video list               # which codecs + hwaccels your ffmpeg supports
+scholium video check              # encode a 2-second clip via the configured pipeline
+```
+
+Each `list` reports per-component probes (Pandoc binary + LaTeX engine
+/ Node.js + Slidev launcher + Playwright Chromium / Node.js + Marp
+launcher + Chrome binary / Python library + API key / ffmpeg + codecs)
+with the resolved path on success or an install hint on failure.
+
+Each `check` actually exercises the real backend: `slides check`
+renders a 2-slide canned deck through the configured renderer,
+`voice check` synthesizes a short canned phrase via the configured
+provider (cloud providers cost a fraction of a cent), and `video check`
+encodes a 2-second test clip with the configured codec settings.
+Every doctor command uses the same code path `scholium generate` does,
+so anything that fails a check will also fail a real render — that's
+the point.
+
+`video list` is especially useful for discovering hardware
+acceleration: if you have an NVIDIA GPU you can switch `video.codec`
+to `h264_nvenc` (or `hevc_nvenc`) for a 5–10× speed-up over libx264.
+
+### Portable frontmatter keys
+
+Every backend accepts a `frontmatter:` overlay merged into the generated
+deck (see each backend's config below).  Three keys are portable —
+same name, same values, work across all three backends:
+
+| Key | Type | Meaning |
+|-----|------|---------|
+| `title` | string | Deck title (Pandoc title slide; Slidev/Marp metadata) |
+| `author` | string | Author (single-author; Pandoc accepts lists too) |
+| `lang` | IETF tag (`en`, `en-AU`, `de`) | Document language |
+
+Every other frontmatter key is **backend-specific** — Pandoc's
+`aspectratio`, `header-includes`, `theme` (Beamer); Slidev's
+`colorSchema`, `canvasWidth`, `transition`; Marp's `paginate`, `header`,
+`footer`, `backgroundColor` — see each backend's own docs for the full
+surface.
+
+### Pandoc (default)
+
+The original Scholium pipeline.  Requires `pandoc` and a working LaTeX
+distribution.  Best when you want Beamer math, citations, or your
+existing LaTeX preamble.  No additional install beyond the system
+requirements at the top of this README.
+
+Configure Pandoc under the `pandoc:` key in `config.yaml`:
+
+```yaml
+slide_backend: pandoc
+
+pandoc:
+  # template: "beamer"           # Pandoc output format (default)
+  # dpi: 300                     # PNG rasterisation DPI
+  frontmatter:                   # merged via `--metadata-file`; overrides
+    aspectratio: 169             # the same keys in your source .md
+    theme: metropolis            # Beamer theme
+    lang: en-AU
+    # header-includes: |
+    #   \usepackage{siunitx}
+```
+
+The legacy top-level `pandoc_template: beamer` setting is still
+honoured if you have it in an older config file.
+
+### Slidev
+
+[Slidev](https://sli.dev) is a Vue-based slide framework with modern
+web typography, native Mermaid diagrams, Shiki syntax highlighting, and
+a rich theme ecosystem.  Scholium translates your markdown into
+Slidev-flavoured input (stripping `::: notes :::` and timing directives,
+splitting on headings), then invokes `slidev export --format png`.
+
+```bash
+# 1. Install Node.js (https://nodejs.org), then verify
+node --version
+
+# 2. Install the Slidev CLI and Playwright's Chromium build.
+#    Global install is recommended so themes / Playwright deps coexist:
+npm install -g @slidev/cli playwright-chromium
+~/.npm-global/bin/playwright install chromium   # or the global `playwright` on PATH
+
+# 3. Mark Scholium's Slidev backend opt-in (no extra Python deps; symmetric extra)
+pip install scholium[slidev]   # or scholium[all] for both slide backends + TTS bundle
+
+# 4. Render with the Slidev backend
+scholium generate lecture.md lecture.mp4 --slide-backend slidev
+```
+
+Configure Slidev under the `slidev:` key in `config.yaml`:
+
+```yaml
+slide_backend: slidev
+
+slidev:
+  theme: "default"                 # "default" → built-in styling (no theme pkg).
+                                   # Use "@slidev/theme-seriph" etc. for installed themes.
+  command: ["npx", "@slidev/cli"]  # or ["slidev"] for a global install
+  timeout: 600                     # seconds; export can be slow on first run
+  with_clicks: false               # export each click step as a separate PNG
+  # extra_args: ["--dark"]         # forwarded verbatim to `slidev export`
+  # frontmatter:                   # merged into every generated deck
+  #   colorSchema: dark
+```
+
+**Caveats vs Pandoc:**
+
+- Heavier runtime: needs Node and Chromium (~500 MB on first install).
+- Pandoc's `slide-level: 2` TOC slides come through as bare section
+  headings (Slidev doesn't auto-generate tables of contents).
+- Beamer incremental bullets (`>-`) are flattened to plain bullets.
+  Per-click reveals would require Slidev's `<v-clicks>` blocks plus
+  `with_clicks: true`.
+- On Linux with the default `fs.inotify.max_user_instances` of 128,
+  Vite's file watcher hits `EMFILE`.  The backend sets
+  `CHOKIDAR_USEPOLLING=true` automatically to work around this.
+
+### Marp
+
+[Marp](https://marp.app) is a markdown-it-based slide renderer driven by
+Puppeteer + Chromium.  Lighter than Slidev (no Vue/Vite stack), themes
+ship inside the CLI itself, and the export step is faster on cold runs.
+
+```bash
+# 1. Install Node.js (https://nodejs.org), then verify
+node --version
+
+# 2. Install the Marp CLI globally (themes are bundled)
+npm install -g @marp-team/marp-cli
+
+# 3. Mark Scholium's Marp backend opt-in
+pip install scholium[marp]   # or scholium[all] for both slide backends + TTS bundle
+
+# 4. Marp drives Chromium via Puppeteer.  If you don't already have a
+#    Chrome/Chromium installed system-wide, point Marp at one — e.g. the
+#    Playwright Chromium you installed for Slidev:
+ls ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome
+
+# 5. Render with the Marp backend
+scholium generate lecture.md lecture.mp4 --slide-backend marp
+```
+
+Configure Marp under the `marp:` key in `config.yaml`:
+
+```yaml
+slide_backend: marp
+
+marp:
+  theme: "default"                          # default | gaia | uncover (built-in)
+  command: ["npx", "@marp-team/marp-cli"]   # or ["marp"] for a global install
+  paginate: false                           # show slide numbers
+  no_sandbox: true                          # add Chrome --no-sandbox automatically
+  # browser: "chrome"                       # chrome | edge | firefox | auto
+  # browser_path: "/path/to/chrome"         # explicit Chromium binary
+  # extra_args: ["--allow-local-files"]     # forwarded verbatim to `marp`
+```
+
+**Caveats vs Pandoc:**
+
+- Needs Node and a Chrome/Chromium binary at run time.
+- Marp's themes (default/gaia/uncover) are clean but more constrained
+  than Slidev's CSS-driven theming.
+- Beamer incremental bullets (`>-`) are flattened to plain bullets.
+- On hardened Linux (Ubuntu 23.10+, anything with AppArmor user-namespace
+  restrictions) Chromium can't sandbox.  The backend sets
+  `CHROME_NO_SANDBOX=1` by default so Marp's CLI adds `--no-sandbox`.
+
+---
+
 ## TTS Providers
 
 | Provider | Type | Quality | Speed | Voice Cloning | API Key | Cost | `[all]` |
@@ -335,7 +596,8 @@ Each bullet creates a new slide page. Split your narration into paragraphs (sepa
 | **StyleTTS2** | Local | ⭐⭐⭐⭐⭐ | Medium | ✅ | ❌ | Free | ❌ |
 | **Tortoise** | Local | ⭐⭐⭐⭐⭐ | Slow | ✅ | ❌ | Free | ❌ |
 
-> `pip install scholium[all]` installs only the four ✅ providers (Piper, ElevenLabs, OpenAI, F5-TTS).
+> `pip install scholium[all]` installs the four ✅ TTS providers (Piper, ElevenLabs, OpenAI, F5-TTS)
+> and also opts in to the `slidev` and `marp` slide backends (which still need their Node-side install — see [Slide Backends](#slide-backends)).
 > Coqui, Bark, StyleTTS2, and Tortoise have transitive dependency conflicts on Python 3.11+ — install individually.
 
 ### Piper (Recommended)
@@ -416,8 +678,30 @@ Or set `tortoise.model_path` in `config.yaml` to skip voice registration.
 Create `config.yaml` in your project:
 
 ```yaml
-# Slide settings
-pandoc_template: beamer
+# Slide backend (pandoc | slidev | marp)
+slide_backend: pandoc
+
+# Pandoc backend (only used when slide_backend: pandoc)
+pandoc:
+  # template: beamer
+  # dpi: 300
+  frontmatter: {}   # see "Portable frontmatter keys" above
+
+# Slidev backend (only used when slide_backend: slidev)
+slidev:
+  theme: default
+  command: ["npx", "@slidev/cli"]
+  timeout: 600
+  with_clicks: false
+  frontmatter: {}
+
+# Marp backend (only used when slide_backend: marp)
+marp:
+  theme: default
+  command: ["npx", "@marp-team/marp-cli"]
+  paginate: false
+  no_sandbox: true
+  frontmatter: {}
 
 # TTS settings
 tts_provider: piper
@@ -431,8 +715,18 @@ timing:
   silent_slide_duration: 2.0  # Duration for TOC/section slides
 
 # Video settings
-resolution: [1920, 1080]
+resolution: [1920, 1080]   # also used by slide backends for rasterisation
 fps: 30
+
+# Video encoding (ffmpeg) — run `scholium video list` to see what your build supports
+video:
+  codec: libx264            # libx264 | libx265 | libvpx-vp9 | libaom-av1 | h264_nvenc | ...
+  preset: medium            # ultrafast … veryslow (x264/x265 only)
+  crf: 23                   # 18=visually-lossless, 23=default, 28=tighter
+  pixel_format: yuv420p
+  audio_codec: aac
+  audio_bitrate: 192k
+  extra_args: []            # forwarded verbatim to every ffmpeg call
 
 # Paths
 voices_dir: ~/.local/share/scholium/voices
@@ -592,6 +886,7 @@ See the `examples/` directory for:
   - [TTS Providers](https://ccaprani.github.io/scholium/user/tts-providers.html)
   - [CLI Reference](https://ccaprani.github.io/scholium/user/cli.html)
 - **Examples**: `examples/` directory in this repo
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 - **Issues**: [GitHub Issues](https://github.com/ccaprani/scholium/issues)
 - **API reference**: `scholium --help`
 

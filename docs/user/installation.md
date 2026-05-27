@@ -4,7 +4,7 @@
 
 **Prerequisites:**
 
-- Python 3.9 or higher
+- Python 3.11 or higher
 - Pandoc 2.9+
 - LaTeX (TeXLive or MiKTeX)
 - FFmpeg 4.0+
@@ -72,8 +72,11 @@ pip install scholium[openai]
 # F5-TTS (fast local voice cloning)
 pip install scholium[f5tts]
 
-# Multiple compatible providers at once
-pip install scholium[all]         # piper + elevenlabs + openai + f5tts
+# Multiple compatible providers at once + slide-backend opt-ins
+pip install scholium[all]         # piper + elevenlabs + openai + f5tts,
+                                  # plus the slidev/marp opt-in markers
+                                  # (Node-side install still required for those —
+                                  #  see the "Slide Backends" section in the README)
 
 # Providers with known dependency conflicts (install individually):
 pip install scholium[coqui]       # Coqui TTS - local voice cloning
@@ -93,21 +96,42 @@ pip install scholium[piper]
 
 ## Verify Installation
 
-Check Scholium:
+### Quick checks
 
 ```bash
 scholium --version
-```
-
-Check dependencies:
-
-```bash
 pandoc --version
 ffmpeg -version
 python3 --version
 ```
 
-Run tests:
+### Pre-flight doctor commands
+
+The authoritative way to confirm every subsystem actually works is to
+run the three doctor commands.  Each one probes external dependencies
+and (with `check`) drives the real pipeline end-to-end through the
+same code path `scholium generate` uses:
+
+```bash
+# Slide-rendering subsystem (pandoc / slidev / marp)
+scholium slides list              # which backends have their dependencies
+scholium slides check pandoc      # render a 2-slide canned deck through pandoc
+
+# Voice (TTS) subsystem
+scholium voice list               # which providers are installed + API-key status
+scholium voice check              # synthesize a short phrase via the configured provider
+
+# Video-encoding subsystem (ffmpeg)
+scholium video list               # codecs + hardware acceleration available
+scholium video check              # encode a 2-second clip via the configured pipeline
+```
+
+If any of these fail, the output tells you exactly what's missing
+(`pip install scholium[<provider>]`, set an API key, install Node.js
++ Slidev/Marp, etc.).  See the [CLI reference](cli.md#doctor-commands)
+for the full per-command behaviour.
+
+### Run tests
 
 ```bash
 pytest

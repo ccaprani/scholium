@@ -157,7 +157,7 @@ class TestConfigCLI:
 
 @pytest.mark.unit
 class TestParseSlideRange:
-    """Unit tests for the --slides range parser."""
+    """Unit tests for the --slide-range parser."""
 
     def test_single_slide(self):
         assert _parse_slide_range("5") == (5, 5)
@@ -237,7 +237,7 @@ class TestTTSEngineQuality:
 
 
 # ---------------------------------------------------------------------------
-# generate --dry-run / --speed / --quality / --slides
+# generate --dry-run / --speed / --quality / --slide-range
 # ---------------------------------------------------------------------------
 
 
@@ -287,9 +287,9 @@ class TestGenerateCLIFlags:
         )
         assert result.exit_code != 0
 
-    def test_slides_invalid_format_rejected(self, runner, minimal_md):
+    def test_slide_range_invalid_format_rejected(self, runner, minimal_md):
         result = runner.invoke(
-            cli, ["generate", str(minimal_md), "out.mp4", "--slides", "abc", "--dry-run"]
+            cli, ["generate", str(minimal_md), "out.mp4", "--slide-range", "abc", "--dry-run"]
         )
         assert result.exit_code != 0
 

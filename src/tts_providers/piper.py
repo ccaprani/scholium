@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class PiperProvider(TTSProvider):
     """Piper TTS provider — fast, modern, local TTS with no API key required."""
 
+    name = "piper"
     SAMPLE_RATE: int = 22050
 
     # Voice download URLs from HuggingFace
@@ -179,19 +180,3 @@ class PiperProvider(TTSProvider):
             "en_GB-alba-medium",
         ]
 
-    def get_info(self) -> Dict[str, Any]:
-        """Return provider metadata.
-
-        Returns:
-            Dictionary describing the provider's name, type, and capabilities.
-        """
-        return {
-            "name": "Piper TTS",
-            "type": "local",
-            "quality": "medium-high",
-            "speed": "fast",
-            "requires_api_key": False,
-            "supports_voice_cloning": False,
-            "languages": ["en_US", "en_GB", "de_DE", "es_ES", "fr_FR"],
-            "notes": "Fast local TTS. Voices download automatically from HuggingFace.",
-        }
