@@ -108,6 +108,9 @@ fps: 30  # Frames per second
 # Override: "./voices" (project-specific, portable with project)
 voices_dir: "~/.local/share/scholium/voices"
 temp_dir: "./temp"  # Temporary files during generation
+audio_cache:
+  enabled: true
+  dir: "~/.cache/scholium/audio"  # Shared across projects; keyed by text and voice settings
 output_dir: "./output"  # Final video output
 
 # Processing options

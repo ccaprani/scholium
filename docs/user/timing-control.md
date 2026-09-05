@@ -4,7 +4,8 @@ Advanced control over slide duration and narration timing.
 
 ## Overview
 
-Timing directives are placed inside `:::notes:::` blocks and control exactly when narration plays and how long slides remain visible.
+Timing directives are placed inside `::: notes` blocks or external narration
+blocks and control exactly when narration plays and how long slides remain visible.
 
 ## Available Directives
 

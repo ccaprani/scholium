@@ -1,8 +1,9 @@
-"""Unified parser for markdown slides with embedded :::notes::: blocks.
+"""Unified parser for markdown slides and narration.
 
 Supports:
 - YAML frontmatter with title_notes for title slide narration
 - ::: notes ::: blocks for slide narration
+- Optional external narration files with [NEXT] slide separators
 - :: prefix for metadata (not narrated)
 - HTML comments for metadata
 - Timing directives: [DUR 5s] [PRE 2s] [POST 3s] [MIN 10s] [PAUSE 2s]
@@ -64,13 +65,23 @@ def parse_time_spec(time_str: str) -> float:
 
 
 class UnifiedParser:
-    """Parse markdown with embedded :::notes::: sections."""
+    """Parse markdown with embedded or externally supplied narration."""
 
-    def parse(self, markdown_path: str) -> List[Slide]:
-        """Parse unified markdown into Slide objects.
+    def parse(
+        self,
+        markdown_path: str,
+        narration_path: Optional[str] = None,
+        include_title_slide: Optional[bool] = None,
+    ) -> List[Slide]:
+        """Parse markdown into Slide objects.
 
         Args:
             markdown_path: Path to markdown file
+            narration_path: Optional plain-text narration file.  Blocks are
+                separated by a line containing ``[NEXT]`` and replace any
+                embedded narration in the markdown.
+            include_title_slide: Whether renderer metadata produces a distinct
+                title page. ``None`` retains the legacy parser inference.
 
         Returns:
             List of Slide objects with content + notes
@@ -94,9 +105,20 @@ class UnifiedParser:
 
         slides = []
 
-        # Check for title_notes in frontmatter (title slide)
-        if "title_notes" in frontmatter:
-            title_narration, title_metadata = self._parse_notes_text(frontmatter["title_notes"])
+        # The CLI supplies the selected backend's title-page behaviour. Direct
+        # parser callers retain the legacy title_notes signal; external scripts
+        # additionally infer a Pandoc-style title page from normal title data.
+        if include_title_slide is None:
+            has_title_slide = "title_notes" in frontmatter or bool(
+                narration_path and frontmatter.get("title")
+            )
+        else:
+            has_title_slide = include_title_slide and bool(
+                frontmatter.get("title") or "title_notes" in frontmatter
+            )
+        if has_title_slide:
+            title_notes = frontmatter.get("title_notes", "")
+            title_narration, title_metadata = self._parse_notes_text(title_notes)
 
             title_slide = Slide(
                 index=0,
@@ -116,7 +138,47 @@ class UnifiedParser:
         )
         slides.extend(body_slides)
 
+        if narration_path:
+            self._apply_external_narration(slides, narration_path)
+
         return slides
+
+    def _apply_external_narration(self, slides: List[Slide], narration_path: str) -> None:
+        """Replace embedded notes with narration from a paired text file.
+
+        A line containing only ``[NEXT]`` separates logical slides.  Empty
+        blocks are retained so authors can deliberately leave title, section,
+        or other slides silent.  A strict block count prevents narration from
+        drifting onto the wrong rendered page.
+        """
+        path = Path(narration_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Narration file not found: {path}")
+        if not path.is_file():
+            raise ValueError(f"Narration path is not a file: {path}")
+
+        text = path.read_text(encoding="utf-8")
+        blocks = re.split(r"^[ \t]*\[NEXT\][ \t]*$", text, flags=re.MULTILINE)
+
+        if len(blocks) != len(slides):
+            raise ValueError(
+                f"Narration file has {len(blocks)} blocks but the markdown has "
+                f"{len(slides)} logical slides. Put [NEXT] on its own line "
+                "between every slide's narration; keep an empty block for a "
+                "silent slide."
+            )
+
+        for slide, block in zip(slides, blocks):
+            segments, metadata = self._parse_notes_block(block.strip(), slide.markdown_content)
+            if slide.is_title_slide:
+                metadata = {"is_title_slide": True, **metadata}
+
+            slide.narration_segments = segments
+            slide.metadata = metadata
+            slide.fixed_duration = metadata.get("fixed_duration")
+            slide.min_duration = metadata.get("min_duration")
+            slide.pre_delay = metadata.get("pre_delay", 0.0)
+            slide.post_delay = metadata.get("post_delay", 0.0)
 
     def _split_frontmatter(self, content: str) -> Tuple[Dict, str]:
         """Split YAML frontmatter from markdown body.
@@ -248,7 +310,7 @@ class UnifiedParser:
         parts: List[str] = []
         prev_end = 0
         for match in matches:
-            parts.append(text[prev_end : match.start()])   # text before this heading
+            parts.append(text[prev_end : match.start()])  # text before this heading
             parts.append(text[match.start() : match.end()])  # the heading itself
             prev_end = match.end()
         parts.append(text[prev_end:])  # text after the last heading

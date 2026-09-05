@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import platform
+import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -14,7 +17,7 @@ from tqdm import tqdm
 from scholium.config import Config
 from scholium.slides import VALID_BACKENDS, get_backend
 from scholium.tts_engine import TTSEngine
-from scholium.unified_parser import Slide, UnifiedParser
+from scholium.unified_parser import Slide, UnifiedParser, validate_slides
 from scholium.video_generator import VideoGenerator
 from scholium.voice_manager import VoiceManager
 
@@ -26,13 +29,19 @@ from ._utils import (
     _resolve_voice_config,
 )
 
-
 # ── Click command ───────────────────────────────────────────────────────────
 
 
 @click.command("generate")
 @click.argument("slides_md", type=click.Path(exists=True))
 @click.argument("output_mp4", type=click.Path())
+@click.option(
+    "--narration",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    metavar="FILE",
+    help="Read narration from a [NEXT]-separated text file instead of embedded notes.",
+)
 @click.option("--voice", default=None, help="Voice name (default: from config)")
 @click.option("--model", default=None, help="TTS model ID (default: from config/provider)")
 @click.option("--provider", default=None, help="TTS provider (default: from config)")
@@ -42,6 +51,14 @@ from ._utils import (
     type=click.Choice(sorted(VALID_BACKENDS)),
     default=None,
     help="Slide rendering backend (default: from config; built-in: pandoc, slidev, marp).",
+)
+@click.option(
+    "--resource-path",
+    "resource_paths",
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    multiple=True,
+    metavar="DIR",
+    help="Add a Pandoc figure/asset search directory; repeat for multiple directories.",
 )
 @click.option("--config", default="config.yaml", help="Path to config file")
 @click.option(
@@ -80,15 +97,29 @@ from ._utils import (
 @click.option(
     "--resume",
     is_flag=True,
-    help="Skip audio generation for slides whose temp files already exist.",
+    help="Reuse temp audio only when narration and voice settings still match.",
+)
+@click.option(
+    "--audio-cache/--no-audio-cache",
+    default=None,
+    help="Reuse matching narration from the persistent content-addressed audio cache.",
+)
+@click.option(
+    "--audio-cache-dir",
+    type=click.Path(file_okay=False, resolve_path=True),
+    default=None,
+    metavar="DIR",
+    help="Override the persistent audio cache directory.",
 )
 def generate(
     slides_md: str,
     output_mp4: str,
+    narration: str | None,
     voice: str | None,
     model: str | None,
     provider: str | None,
     slide_backend: str | None,
+    resource_paths: tuple[str, ...],
     config: str,
     section_duration: float | None,
     keep_temp: bool,
@@ -102,10 +133,13 @@ def generate(
     slide_range: str | None,
     dry_run: bool,
     resume: bool,
+    audio_cache: bool | None,
+    audio_cache_dir: str | None,
 ) -> None:
-    """Generate video from markdown slides with embedded notes.
+    """Generate video from markdown slides and narration.
 
-    The markdown file should contain ::: notes ::: blocks for narration.
+    By default, narration comes from ::: notes ::: blocks in the markdown.
+    Use --narration FILE to supply a paired [NEXT]-separated text script.
 
     Slide level is controlled by 'slide-level' in YAML frontmatter (default: 1).
     - slide-level: 1 means # creates slides, ## is content (default, matches pandoc)
@@ -113,21 +147,25 @@ def generate(
 
     Examples:
         scholium generate slides.md output.mp4
+        scholium generate slides.md output.mp4 --narration narration.txt
         scholium generate slides.md output.mp4 --provider piper
         scholium generate slides.md output.mp4 --slide-backend slidev --provider piper
     """
     cfg = Config(config)
-    cfg.ensure_dirs()
 
     _apply_cli_overrides(
         cfg,
         voice=voice,
         model=model,
         provider=provider,
+        resource_paths=resource_paths,
         keep_temp=keep_temp,
         verbose=verbose,
         section_duration=section_duration,
+        audio_cache=audio_cache,
+        audio_cache_dir=audio_cache_dir,
     )
+    cfg.ensure_dirs()
 
     # Resolve slide_backend with full precedence:
     #   --slide-backend > source frontmatter > config.yaml > default.
@@ -144,12 +182,20 @@ def generate(
     is_verbose = cfg.get("verbose")
     if is_verbose:
         click.echo(f"{_icon('📄')} Slides: {slides_md}")
+        if narration:
+            click.echo(f"{_icon('📝')} Narration: {narration}")
         click.echo(f"{_icon('🎬')} Output: {output_mp4}")
-        click.echo(
-            f"{_icon('🖼')}  Slide backend: {resolved_backend}  (from {backend_origin})"
-        )
+        click.echo(f"{_icon('🖼')}  Slide backend: {resolved_backend}  (from {backend_origin})")
+        if resolved_backend == "pandoc" and cfg.get("pandoc.resource_paths"):
+            click.echo(
+                f"{_icon('📚')} Figure paths: " + ", ".join(cfg.get("pandoc.resource_paths"))
+            )
         click.echo(f"{_icon('🎤')} Voice: {cfg.get('voice')}")
         click.echo(f"{_icon('📊')} TTS Provider: {cfg.get('tts_provider')}")
+        if cfg.get("audio_cache.enabled", True):
+            click.echo(f"{_icon('♻️')}  Audio cache: {cfg.get('audio_cache.dir')}")
+        else:
+            click.echo(f"{_icon('♻️')}  Audio cache: disabled")
 
     # Validate --slide-range early so bad values fail even under --dry-run
     slide_range_pair: Optional[Tuple[int, int]] = None
@@ -162,7 +208,14 @@ def generate(
             )
 
     parser = UnifiedParser()
-    parsed_slides = parser.parse(slides_md)
+    try:
+        parsed_slides = parser.parse(
+            slides_md,
+            narration_path=narration,
+            include_title_slide=resolved_backend == "pandoc",
+        )
+    except (FileNotFoundError, ValueError) as e:
+        raise click.ClickException(str(e))
 
     if dry_run:
         _print_dry_run(parsed_slides, cfg)
@@ -199,9 +252,12 @@ def _apply_cli_overrides(
     voice: str | None,
     model: str | None,
     provider: str | None,
+    resource_paths: tuple[str, ...],
     keep_temp: bool,
     verbose: bool,
     section_duration: float | None,
+    audio_cache: bool | None,
+    audio_cache_dir: str | None,
 ) -> None:
     """Apply CLI-flag overrides onto the loaded configuration.
 
@@ -209,6 +265,8 @@ def _apply_cli_overrides(
     ``_resolve_slide_backend`` so the source ``.md``'s frontmatter can
     also participate in the precedence chain.
     """
+    if provider:
+        cfg.set("tts_provider", provider)
     if voice:
         cfg.set("voice", voice)
     if model:
@@ -222,14 +280,18 @@ def _apply_cli_overrides(
         elif provider_name == "coqui":
             cfg.set("coqui.model", model)
         # piper doesn't use model
-    if provider:
-        cfg.set("tts_provider", provider)
+    if resource_paths:
+        cfg.set("pandoc.resource_paths", list(resource_paths))
     if keep_temp:
         cfg.set("keep_temp_files", True)
     if verbose:
         cfg.set("verbose", True)
     if section_duration is not None:
         cfg.set("timing.silent_slide_duration", section_duration)
+    if audio_cache is not None:
+        cfg.set("audio_cache.enabled", audio_cache)
+    if audio_cache_dir is not None:
+        cfg.set("audio_cache.dir", str(Path(audio_cache_dir).expanduser()))
 
 
 def _print_dry_run(parsed_slides: List[Slide], cfg: Config) -> None:
@@ -240,7 +302,11 @@ def _print_dry_run(parsed_slides: List[Slide], cfg: Config) -> None:
         f"({with_nar} with narration, {len(parsed_slides) - with_nar} without):\n"
     )
     for i, slide in enumerate(parsed_slides, 1):
-        title = slide.markdown_content.strip().splitlines()[0].lstrip("#").strip()
+        if slide.is_title_slide:
+            title = "Title slide"
+        else:
+            content_lines = slide.markdown_content.strip().splitlines()
+            title = content_lines[0].lstrip("#").strip() if content_lines else "(untitled slide)"
         click.echo(f"Slide {i}: {title}")
         if slide.has_narration:
             for j, seg in enumerate(slide.narration_segments, 1):
@@ -272,8 +338,12 @@ def _run_generation(
     """End-to-end pipeline: render slides, TTS, mux to video."""
     is_verbose = cfg.get("verbose")
 
-    temp_dir = Path(cfg.get("temp_dir"))
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    output_path = Path(output_mp4)
+    temp_dir = _generation_temp_dir(
+        Path(cfg.get("temp_dir")),
+        output_path,
+        persistent=bool(cfg.get("keep_temp_files") or resume),
+    )
 
     # ── Step 1: Render slides via the configured backend ──────────────────
     if is_verbose:
@@ -292,14 +362,19 @@ def _run_generation(
     if is_verbose:
         click.echo(f"   {_CHK} Generated {len(slide_images)} slides via {backend_name}")
 
+    # Page/narration drift is fatal.  Validate before writing outputs or
+    # invoking a TTS provider so a malformed deck cannot produce costly,
+    # incorrectly synchronised audio.
+    _enforce_slide_sync(parsed_slides, len(slide_images), is_verbose)
+
     # ── Save slides as PDF in output directory (unless --no-pdf) ──────────
-    output_path = Path(output_mp4)
     output_dir = output_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     slides_pdf_path = output_dir / f"{output_path.stem}_slides.pdf"
 
     if not no_pdf:
-        _write_slides_pdf(slide_images, slides_pdf_path, is_verbose)
+        source_pdf = slides_output_dir / "slides.pdf" if backend_name == "pandoc" else None
+        _write_slides_pdf(slide_images, slides_pdf_path, is_verbose, source_pdf=source_pdf)
 
     # ── Step 2: Build segments from narration ─────────────────────────────
     if is_verbose:
@@ -364,9 +439,10 @@ def _run_generation(
     )
 
     audio_output_dir = temp_dir / "audio"
+    audio_cache_dir = cfg.get("audio_cache.dir") if cfg.get("audio_cache.enabled", True) else None
 
     if resume and is_verbose:
-        click.echo(f"   {_icon('⏩')} Resume mode: skipping existing audio files")
+        click.echo(f"   {_icon('⏩')} Resume mode: checking the retained output workspace")
     if is_verbose:
         with tqdm(total=len(segments), desc="   Generating audio", unit="segment") as pbar:
             segments_with_audio = tts_engine.generate_segments(
@@ -375,10 +451,15 @@ def _run_generation(
                 str(audio_output_dir),
                 progress_callback=lambda: pbar.update(1),
                 resume=resume,
+                cache_dir=audio_cache_dir,
             )
     else:
         segments_with_audio = tts_engine.generate_segments(
-            segments, voice_config, str(audio_output_dir), resume=resume
+            segments,
+            voice_config,
+            str(audio_output_dir),
+            resume=resume,
+            cache_dir=audio_cache_dir,
         )
 
     total_duration = sum(s["duration"] for s in segments_with_audio)
@@ -387,6 +468,14 @@ def _run_generation(
             f"   {_CHK} Generated {len(segments_with_audio)} audio segments "
             f"({total_duration:.1f}s total)"
         )
+        stats = tts_engine.cache_stats
+        reused = stats["workspace_hits"] + stats["shared_hits"]
+        click.echo(
+            f"     {_BULL} {stats['generated']} synthesised, {reused} reused "
+            f"({stats['shared_hits']} shared cache, {stats['workspace_hits']} workspace)"
+        )
+        if stats["silent"]:
+            click.echo(f"     {_BULL} {stats['silent']} silent segment(s)")
 
     # ── Step 4: Mux to video (unless --audio-only) ────────────────────────
     if not audio_only:
@@ -438,6 +527,26 @@ def _run_generation(
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
+def _generation_temp_dir(configured_root: Path, output_path: Path, *, persistent: bool) -> Path:
+    """Return a process-safe workspace beneath the configured temp root.
+
+    Ordinary generations use a unique directory so concurrent jobs cannot
+    overwrite one another's slide images or audio segments. Kept or resumable
+    work uses an output-specific directory so a later ``--resume`` invocation
+    can find the matching intermediates without colliding with other outputs.
+    """
+    configured_root.mkdir(parents=True, exist_ok=True)
+    if not persistent:
+        return Path(tempfile.mkdtemp(prefix="scholium-", dir=configured_root))
+
+    safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "-", output_path.stem).strip("-_")
+    safe_stem = safe_stem or "output"
+    digest = hashlib.sha256(str(output_path.resolve()).encode()).hexdigest()[:10]
+    workspace = configured_root / f"{safe_stem}-{digest}"
+    workspace.mkdir(parents=True, exist_ok=True)
+    return workspace
+
+
 def _build_segments(parsed_slides: List[Slide], cfg: Config) -> List[Dict[str, Any]]:
     """Expand the parsed slides into per-narration-segment dicts.
 
@@ -449,9 +558,7 @@ def _build_segments(parsed_slides: List[Slide], cfg: Config) -> List[Dict[str, A
     pdf_page_index = 0
 
     for slide in parsed_slides:
-        if not slide.narration_segments or all(
-            not seg.strip() for seg in slide.narration_segments
-        ):
+        if not slide.narration_segments or all(not seg.strip() for seg in slide.narration_segments):
             default_duration = cfg.get("timing.silent_slide_duration", 3.0)
             if slide.min_duration is not None:
                 default_duration = slide.min_duration
@@ -476,9 +583,7 @@ def _build_segments(parsed_slides: List[Slide], cfg: Config) -> List[Dict[str, A
                     "min_duration": slide.min_duration,
                     "pre_delay": slide.pre_delay if i == 0 else 0.0,
                     "post_delay": (
-                        slide.post_delay
-                        if i == len(slide.narration_segments) - 1
-                        else 0.0
+                        slide.post_delay if i == len(slide.narration_segments) - 1 else 0.0
                     ),
                 }
             )
@@ -491,9 +596,40 @@ def _build_segments(parsed_slides: List[Slide], cfg: Config) -> List[Dict[str, A
     return segments
 
 
-def _write_slides_pdf(slide_images: List[str], pdf_path: Path, is_verbose: bool) -> None:
-    """Combine the rendered slide PNGs into a single PDF beside the video."""
+def _enforce_slide_sync(
+    parsed_slides: List[Slide], num_rendered_pages: int, is_verbose: bool
+) -> None:
+    """Fail on page/overlay mismatches and report intentionally silent slides."""
+    issues = validate_slides(parsed_slides, num_rendered_pages)
+    narration_warnings = [issue for issue in issues if issue.endswith("has no narration")]
+    sync_errors = [issue for issue in issues if issue not in narration_warnings]
+
+    if sync_errors:
+        detail = "\n".join(f"  - {issue}" for issue in sync_errors)
+        raise click.ClickException(
+            "Slide synchronisation failed before audio generation:\n" + detail
+        )
+
+    if is_verbose:
+        for warning in narration_warnings:
+            click.echo(f"   {_WARN}  {warning}; it will be silent")
+
+
+def _write_slides_pdf(
+    slide_images: List[str],
+    pdf_path: Path,
+    is_verbose: bool,
+    *,
+    source_pdf: Optional[Path] = None,
+) -> None:
+    """Save the slide PDF, preserving a backend's vector original when present."""
     try:
+        if source_pdf is not None and source_pdf.is_file():
+            shutil.copy2(source_pdf, pdf_path)
+            if is_verbose:
+                click.echo(f"   {_CHK} Saved vector slides PDF: {pdf_path}")
+            return
+
         from PIL import Image
 
         images = []

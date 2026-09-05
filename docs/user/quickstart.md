@@ -80,6 +80,16 @@ Floats store decimal numbers.
 scholium generate lecture.md output.mp4
 ```
 
+If you prefer to edit narration separately, put one block per logical slide in
+`lecture.narration.txt`, separated by a line containing `[NEXT]`, then run:
+
+```bash
+scholium generate lecture.md output.mp4 --narration lecture.narration.txt
+```
+
+Keep empty blocks for silent slides. Scholium checks the block and rendered-page
+counts before it generates any speech.
+
 ### Step 3: Watch
 
 Open `output.mp4` in your video player!

@@ -1,6 +1,8 @@
 # Narration Format
 
-The `:::notes:::` block is where you write what will be spoken during each slide. This guide explains the complete narration syntax.
+Narration can live in `::: notes` blocks inside the slide markdown or in a
+paired text file. Both forms support the same timing directives, metadata, and
+incremental-reveal paragraphs.
 
 ## Basic Syntax
 
@@ -19,7 +21,47 @@ Can be multiple lines.
 :::
 ```
 
-**Important**: Must be lowercase `:::notes:::` not `:::NOTES:::`.
+The `notes` label is case-insensitive, though lowercase is recommended.
+
+## Paired Narration File
+
+Use a separate script when the spoken text has its own editing or review
+workflow:
+
+```text
+Welcome to the lecture.
+[NEXT]
+This is the narration for the first content slide.
+[NEXT]
+[MIN 3s]
+[NEXT]
+The final slide narration.
+```
+
+Run it with:
+
+```bash
+scholium generate lecture.md lecture.mp4 --narration lecture.narration.txt
+```
+
+A line containing only `[NEXT]` separates logical slides. The example's third
+block has timing but no speech, so that slide is silent for at least three
+seconds. Two adjacent separators create a silent block with the default
+duration.
+
+The number of blocks must exactly match the logical slides in the markdown.
+With the default Pandoc/Beamer backend this includes the title page when YAML
+has a `title`; it also includes section slides when `slide-level: 2`. Never
+delete a silent block: leave it empty so later narration cannot shift onto the
+wrong slide. Use `--dry-run` to inspect the mapping without rendering or
+generating audio.
+
+When `--narration` is supplied, the external blocks replace any embedded notes.
+Within each block:
+
+- blank-line-separated paragraphs map to incremental `>-` reveals;
+- `[PRE]`, `[POST]`, `[MIN]`, `[DUR]`, and `[PAUSE]` work normally;
+- `:: Reference: ...` and other `::` metadata lines are not spoken.
 
 ### Multi-Paragraph Narration
 

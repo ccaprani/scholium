@@ -2,7 +2,9 @@
 
 ## Overview
 
-This test suite validates Scholium's unified markdown parser and video generation pipeline. The system now uses a **single markdown file** with embedded `:::notes:::` blocks for narration, replacing the previous two-file system.
+This test suite validates Scholium's markdown parser and video generation pipeline.
+Narration can be embedded in `::: notes` blocks or supplied as a paired,
+`[NEXT]`-separated text file.
 
 ## Test Files
 
@@ -12,7 +14,8 @@ This test suite validates Scholium's unified markdown parser and video generatio
 - **conftest.py** - Pytest fixtures and configuration
 
 ### Removed Files
-- ❌ **test_transcript.txt** - No longer used (narration now embedded in markdown)
+- External narration fixtures are created per test so strict block-count and
+  empty-silent-block behaviour can be checked in isolation.
 - ❌ Tests for `transcript_parser.py` - Replaced by `unified_parser.py` tests
 
 ## Running Tests

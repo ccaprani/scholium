@@ -42,9 +42,11 @@ class PandocBackend(SlideBackend):
         # Optional overlay merged into the source's YAML metadata via
         # ``--metadata-file``.  Provides symmetry with the Slidev/Marp
         # backends' ``frontmatter:`` setting.
-        self.extra_frontmatter: Dict[str, Any] = dict(
-            self.backend_config.get("frontmatter", {})
-        )
+        self.extra_frontmatter: Dict[str, Any] = dict(self.backend_config.get("frontmatter", {}))
+        configured_paths = self.backend_config.get("resource_paths", [])
+        if isinstance(configured_paths, str):
+            configured_paths = [configured_paths]
+        self.resource_paths = [str(path) for path in configured_paths]
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -76,8 +78,8 @@ class PandocBackend(SlideBackend):
             FileNotFoundError: If the markdown file is missing.
             RuntimeError: If pandoc conversion fails or pandoc is not on PATH.
         """
-        markdown_path_p = Path(markdown_path)
-        output_path_p = Path(output_path)
+        markdown_path_p = Path(markdown_path).resolve()
+        output_path_p = Path(output_path).resolve()
 
         if not markdown_path_p.exists():
             raise FileNotFoundError(f"Markdown file not found: {markdown_path_p}")
@@ -105,13 +107,49 @@ class PandocBackend(SlideBackend):
             )
             cmd.extend(["--metadata-file", str(meta_path)])
 
-        # Let pdflatex find images referenced relative to the source file.
+        # Compile from the source directory so explicit relative paths in
+        # Markdown, raw LaTeX, and reusable ``\input{...}`` figures behave the
+        # same whether Scholium is invoked beside the deck or elsewhere.
         env = os.environ.copy()
         src_dir = str(markdown_path_p.parent.resolve())
-        env["TEXINPUTS"] = src_dir + os.pathsep + env.get("TEXINPUTS", "")
+        resolved_resource_paths = []
+        for configured_path in self.resource_paths:
+            resource_path = Path(configured_path).expanduser()
+            if not resource_path.is_absolute():
+                resource_path = markdown_path_p.parent / resource_path
+            resource_path = resource_path.resolve()
+            if not resource_path.is_dir():
+                raise FileNotFoundError(
+                    f"Pandoc resource path not found or not a directory: {resource_path}"
+                )
+            resolved_resource_paths.append(str(resource_path))
+
+        if resolved_resource_paths:
+            cmd.extend(
+                [
+                    "--resource-path",
+                    os.pathsep.join([src_dir, *resolved_resource_paths]),
+                ]
+            )
+
+        texinputs = [src_dir, *resolved_resource_paths]
+        existing_texinputs = env.get("TEXINPUTS", "")
+        if existing_texinputs:
+            texinputs.append(existing_texinputs)
+            env["TEXINPUTS"] = os.pathsep.join(texinputs)
+        else:
+            # A trailing separator preserves TeX's default search paths.
+            env["TEXINPUTS"] = os.pathsep.join(texinputs) + os.pathsep
 
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+            subprocess.run(
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+                cwd=src_dir,
+            )
             return str(output_path_p)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Pandoc conversion failed: {e.stderr}")
@@ -126,7 +164,9 @@ class PandocBackend(SlideBackend):
         if pandoc_path:
             version = short_version(["pandoc", "--version"])
             probes.append(
-                Probe("Pandoc binary", True, f"{pandoc_path}" + (f" ({version})" if version else ""))
+                Probe(
+                    "Pandoc binary", True, f"{pandoc_path}" + (f" ({version})" if version else "")
+                )
             )
         else:
             probes.append(

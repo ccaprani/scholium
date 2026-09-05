@@ -30,7 +30,6 @@ from scholium.slides import (
 )
 from scholium.slide_processor import SlideProcessor
 
-
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -125,7 +124,11 @@ class TestSlideBackendConfig:
         user set."""
         cfg = Config(config_path="nonexistent.yaml")
         pandoc = cfg.get("pandoc")
-        assert pandoc == {"frontmatter": {}, "template": "beamer"}
+        assert pandoc == {
+            "frontmatter": {},
+            "resource_paths": [],
+            "template": "beamer",
+        }
 
     def test_legacy_pandoc_template_still_honoured(self, tmp_path):
         """A user config that only sets the legacy top-level
@@ -145,9 +148,7 @@ class TestSlideBackendConfig:
         from scholium.cli.generate import _build_backend_config
 
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "pandoc_template: revealjs\npandoc:\n  template: beamer\n"
-        )
+        config_file.write_text("pandoc_template: revealjs\npandoc:\n  template: beamer\n")
         cfg = Config(str(config_file))
 
         backend_cfg = _build_backend_config(cfg, "pandoc")
@@ -186,8 +187,7 @@ class TestSlideBackendConfig:
 # ---------------------------------------------------------------------------
 
 
-_SAMPLE_SOURCE = textwrap.dedent(
-    """\
+_SAMPLE_SOURCE = textwrap.dedent("""\
     ---
     title: "Newton's Laws"
     author: "Physics 101"
@@ -222,8 +222,7 @@ _SAMPLE_SOURCE = textwrap.dedent(
     ## Third Slide
 
     Content here.
-    """
-)
+    """)
 
 
 @pytest.mark.unit
@@ -289,8 +288,7 @@ class TestSlidevTranslation:
 
     def test_translation_slide_level_one(self, backend):
         """slide-level: 1 splits on `#` only, not `##`."""
-        src = textwrap.dedent(
-            """\
+        src = textwrap.dedent("""\
             ---
             title: x
             slide-level: 1
@@ -307,8 +305,7 @@ class TestSlidevTranslation:
             # Slide Two
 
             Body.
-            """
-        )
+            """)
         out = backend._translate(src)
         # 2 slides → 1 inter-slide separator + 1 frontmatter close
         assert out.count("\n---\n") == 2
@@ -383,9 +380,7 @@ class TestMarpTranslation:
 
 def _make_fake_slidev(path: Path) -> None:
     """Write a stub script that creates two PNGs at --output and exits 0."""
-    path.write_text(
-        textwrap.dedent(
-            """\
+    path.write_text(textwrap.dedent("""\
             #!/usr/bin/env python3
             import sys
             from pathlib import Path
@@ -399,9 +394,7 @@ def _make_fake_slidev(path: Path) -> None:
             for n in (1, 2):
                 img = Image.new('RGB', (640, 480), color=(n*100, n*50, 50))
                 img.save(out_dir / f'fake-{n:02d}.png')
-            """
-        )
-    )
+            """))
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
@@ -411,9 +404,7 @@ def _make_fake_marp(path: Path) -> None:
     Marp writes ``<basename>.001.png``, ``<basename>.002.png``, … next to
     the ``-o`` path.  The stub emits two such files and exits 0.
     """
-    path.write_text(
-        textwrap.dedent(
-            """\
+    path.write_text(textwrap.dedent("""\
             #!/usr/bin/env python3
             import sys
             from pathlib import Path
@@ -430,9 +421,7 @@ def _make_fake_marp(path: Path) -> None:
             for n in (1, 2):
                 img = Image.new('RGB', (640, 480), color=(50, n*80, n*120))
                 img.save(out_template.parent / f'{stem}.{n:03d}.png')
-            """
-        )
-    )
+            """))
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
@@ -445,9 +434,7 @@ class TestSlidevExportEndToEnd:
         _make_fake_slidev(fake)
 
         src = tmp_path / "lecture.md"
-        src.write_text(
-            textwrap.dedent(
-                """\
+        src.write_text(textwrap.dedent("""\
                 ---
                 title: Demo
                 slide-level: 2
@@ -462,9 +449,7 @@ class TestSlidevExportEndToEnd:
                 ::: notes
                 Spoken.
                 :::
-                """
-            )
-        )
+                """))
 
         backend = SlidevBackend(
             resolution=(1920, 1080),
@@ -504,9 +489,7 @@ class TestMarpExportEndToEnd:
         _make_fake_marp(fake)
 
         src = tmp_path / "lecture.md"
-        src.write_text(
-            textwrap.dedent(
-                """\
+        src.write_text(textwrap.dedent("""\
                 ---
                 title: Demo
                 slide-level: 2
@@ -521,9 +504,7 @@ class TestMarpExportEndToEnd:
                 ::: notes
                 Spoken.
                 :::
-                """
-            )
-        )
+                """))
 
         backend = MarpBackend(
             resolution=(1920, 1080),
@@ -560,9 +541,7 @@ def _make_fake_pandoc(path: Path) -> None:
     The real pandoc would produce a PDF; for the overlay test we only need
     to confirm the right CLI flags + metadata file are passed.
     """
-    path.write_text(
-        textwrap.dedent(
-            """\
+    path.write_text(textwrap.dedent("""\
             #!/usr/bin/env python3
             import sys
             from pathlib import Path
@@ -575,9 +554,7 @@ def _make_fake_pandoc(path: Path) -> None:
                     break
             # Record argv next to ourselves for inspection.
             (Path(__file__).parent / 'pandoc-argv.txt').write_text('\\n'.join(args))
-            """
-        )
-    )
+            """))
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
@@ -626,6 +603,7 @@ class TestPandocFrontmatterOverlay:
         assert meta_path.exists()
 
         import yaml as _yaml
+
         loaded = _yaml.safe_load(meta_path.read_text())
         assert loaded == {"aspectratio": 169, "lang": "en-AU"}
 
@@ -647,6 +625,85 @@ class TestPandocFrontmatterOverlay:
         argv = (fake_dir / "pandoc-argv.txt").read_text().splitlines()
         assert "--metadata-file" not in argv
         assert not (pdf_path.parent / "_scholium_meta.yaml").exists()
+
+    def test_pandoc_runs_from_markdown_directory(self, tmp_path, monkeypatch):
+        """Relative asset and input paths resolve from the deck's directory."""
+        run_kwargs = {}
+
+        def fake_run(*args, **kwargs):
+            run_kwargs.update(kwargs)
+
+        monkeypatch.setattr("scholium.slides.pandoc.subprocess.run", fake_run)
+
+        source_dir = tmp_path / "course" / "slides"
+        source_dir.mkdir(parents=True)
+        source = source_dir / "lecture.md"
+        source.write_text("# A\n")
+
+        PandocBackend().markdown_to_pdf(str(source), str(tmp_path / "out" / "slides.pdf"))
+
+        assert Path(run_kwargs["cwd"]) == source_dir.resolve()
+
+    def test_resource_paths_resolve_from_markdown_directory(self, tmp_path, monkeypatch):
+        """Book figure roots are passed to Pandoc and TeX as absolute paths."""
+        run_args = []
+        run_kwargs = {}
+
+        def fake_run(args, **kwargs):
+            run_args.extend(args)
+            run_kwargs.update(kwargs)
+
+        monkeypatch.setattr("scholium.slides.pandoc.subprocess.run", fake_run)
+
+        source_dir = tmp_path / "course" / "slides"
+        figure_dir = tmp_path / "course" / "book" / "Tikz"
+        source_dir.mkdir(parents=True)
+        figure_dir.mkdir(parents=True)
+        source = source_dir / "lecture.md"
+        source.write_text("# A\n")
+
+        PandocBackend(backend_config={"resource_paths": ["../book/Tikz"]}).markdown_to_pdf(
+            str(source), str(tmp_path / "out" / "slides.pdf")
+        )
+
+        resource_arg = run_args[run_args.index("--resource-path") + 1]
+        assert resource_arg.split(os.pathsep) == [
+            str(source_dir.resolve()),
+            str(figure_dir.resolve()),
+        ]
+        assert run_kwargs["env"]["TEXINPUTS"].split(os.pathsep)[:2] == [
+            str(source_dir.resolve()),
+            str(figure_dir.resolve()),
+        ]
+
+    def test_missing_resource_path_fails_before_pandoc(self, tmp_path):
+        source = tmp_path / "lecture.md"
+        source.write_text("# A\n")
+
+        with pytest.raises(FileNotFoundError, match="Pandoc resource path"):
+            PandocBackend(backend_config={"resource_paths": ["missing-figures"]}).markdown_to_pdf(
+                str(source), str(tmp_path / "out" / "slides.pdf")
+            )
+
+    def test_relative_output_is_resolved_before_changing_directory(self, tmp_path, monkeypatch):
+        """A relative temp/output path remains rooted at Scholium's caller."""
+        run_args = []
+
+        def fake_run(args, **kwargs):
+            run_args.extend(args)
+
+        monkeypatch.setattr("scholium.slides.pandoc.subprocess.run", fake_run)
+        monkeypatch.chdir(tmp_path)
+
+        source_dir = tmp_path / "course" / "slides"
+        source_dir.mkdir(parents=True)
+        source = source_dir / "lecture.md"
+        source.write_text("# A\n")
+
+        PandocBackend().markdown_to_pdf(str(source), "temp/slides.pdf")
+
+        output_arg = Path(run_args[run_args.index("-o") + 1])
+        assert output_arg == (tmp_path / "temp" / "slides.pdf").resolve()
 
 
 @pytest.mark.unit
@@ -769,9 +826,7 @@ class TestSlideBackendResolution:
         cfg = Config(config_path="nonexistent.yaml")
         cfg.set("slide_backend", "slidev")
 
-        name, origin = _resolve_slide_backend(
-            cli_value="pandoc", slides_md=str(src), cfg=cfg
-        )
+        name, origin = _resolve_slide_backend(cli_value="pandoc", slides_md=str(src), cfg=cfg)
         assert name == "pandoc"
         assert origin == "--slide-backend"
 
@@ -783,9 +838,7 @@ class TestSlideBackendResolution:
         cfg = Config(config_path="nonexistent.yaml")
         cfg.set("slide_backend", "slidev")
 
-        name, origin = _resolve_slide_backend(
-            cli_value=None, slides_md=str(src), cfg=cfg
-        )
+        name, origin = _resolve_slide_backend(cli_value=None, slides_md=str(src), cfg=cfg)
         assert name == "marp"
         assert "frontmatter" in origin
         assert "lecture.md" in origin
@@ -798,9 +851,7 @@ class TestSlideBackendResolution:
         cfg = Config(config_path="nonexistent.yaml")
         cfg.set("slide_backend", "slidev")
 
-        name, origin = _resolve_slide_backend(
-            cli_value=None, slides_md=str(src), cfg=cfg
-        )
+        name, origin = _resolve_slide_backend(cli_value=None, slides_md=str(src), cfg=cfg)
         assert name == "slidev"
         assert origin == "config.yaml"
 
@@ -813,9 +864,7 @@ class TestSlideBackendResolution:
         cfg = Config(config_path="nonexistent.yaml")
         cfg.set("slide_backend", None)
 
-        name, origin = _resolve_slide_backend(
-            cli_value=None, slides_md=str(src), cfg=cfg
-        )
+        name, origin = _resolve_slide_backend(cli_value=None, slides_md=str(src), cfg=cfg)
         assert name == "pandoc"
         assert origin == "default"
 

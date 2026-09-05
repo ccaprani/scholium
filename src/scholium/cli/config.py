@@ -188,6 +188,9 @@ timing:
 # ── File paths ────────────────────────────────────────────────────────────────
 voices_dir: "~/.local/share/scholium/voices"
 temp_dir: "./temp"
+audio_cache:
+  enabled: true
+  dir: "~/.cache/scholium/audio"
 output_dir: "./output"
 keep_temp_files: false   # set true to inspect intermediate files when debugging
 """
