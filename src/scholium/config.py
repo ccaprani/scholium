@@ -25,6 +25,7 @@ class Config:
         "pandoc_template": "beamer",
         "pandoc": {
             "frontmatter": {},
+            "resource_paths": [],
         },
         "slidev": {
             "theme": "default",
@@ -50,29 +51,32 @@ class Config:
         "elevenlabs": {
             "api_key": "",
             "model": "eleven_monolingual_v1",
-            "stability": None,        # None = use ElevenLabs default (~0.5)
-            "similarity_boost": None, # None = use ElevenLabs default (~0.75)
+            "stability": None,  # None = use ElevenLabs default (~0.5)
+            "similarity_boost": None,  # None = use ElevenLabs default (~0.75)
         },
         "coqui": {"model": "tts_models/multilingual/multi-dataset/xtts_v2"},
         "openai": {"api_key": "", "model": "tts-1", "speed": 1.0},
         "bark": {"model": "small"},
         "f5tts": {
-            "model": "F5-TTS",   # F5-TTS | E2-TTS
+            "model": "F5-TTS",  # F5-TTS | E2-TTS
             "vocoder": "vocos",  # vocos | bigvgan
         },
         "styletts2": {
-            "alpha": 0.3,           # style blend, 0.0–1.0
-            "beta": 0.7,            # diffusion guidance, 0.0–1.0
-            "diffusion_steps": 5,   # 1–20
+            "alpha": 0.3,  # style blend, 0.0–1.0
+            "beta": 0.7,  # diffusion guidance, 0.0–1.0
+            "diffusion_steps": 5,  # 1–20
         },
         "tortoise": {
-            "preset": "fast",   # ultra_fast | fast | standard | high_quality
+            "preset": "fast",  # ultra_fast | fast | standard | high_quality
             "kv_cache": True,
             "half": True,
         },
         "timing": {
             "default_pre_delay": 1.0,
             "default_post_delay": 2.0,
+            # Optional cap on the combined post-delay of one rendered page and
+            # pre-delay of the next.  ``None`` preserves legacy behaviour.
+            "max_inter_slide_pause": None,
             "min_slide_duration": 4.0,
             "silent_slide_duration": 3.0,  # TOC/section slides
         },
@@ -89,6 +93,10 @@ class Config:
         },
         "voices_dir": "~/.local/share/scholium/voices",
         "temp_dir": "./temp",
+        "audio_cache": {
+            "enabled": True,
+            "dir": "~/.cache/scholium/audio",
+        },
         "output_dir": "./output",
         "keep_temp_files": False,
         "verbose": True,
@@ -136,7 +144,7 @@ class Config:
 
     def _validate(self) -> None:
         """Validate configuration values.
-        
+
         Raises:
             ValueError: If configuration values are invalid.
         """
@@ -154,6 +162,18 @@ class Config:
             raise ValueError(
                 f"Invalid slide_backend: '{slide_backend}'. "
                 f"Valid options: {', '.join(sorted(VALID_BACKENDS))}"
+            )
+
+        # Validate Pandoc resource search paths. A single string is accepted
+        # for convenience; a sequence is preferred for multiple figure roots.
+        resource_paths = self.config.get("pandoc", {}).get("resource_paths", [])
+        if isinstance(resource_paths, str):
+            resource_paths = [resource_paths]
+        if not isinstance(resource_paths, (list, tuple)) or not all(
+            isinstance(path, str) and path for path in resource_paths
+        ):
+            raise ValueError(
+                "pandoc.resource_paths must be a path string or a list of path strings"
             )
 
         # Validate resolution
@@ -177,13 +197,17 @@ class Config:
         piper_speed = self.config.get("piper", {}).get("speed")
         if piper_speed is not None:
             if not isinstance(piper_speed, (int, float)) or not (0.1 <= piper_speed <= 5.0):
-                raise ValueError(f"piper.speed must be a number between 0.1 and 5.0, got: {piper_speed}")
+                raise ValueError(
+                    f"piper.speed must be a number between 0.1 and 5.0, got: {piper_speed}"
+                )
 
         # Validate openai.speed
         openai_speed = self.config.get("openai", {}).get("speed")
         if openai_speed is not None:
             if not isinstance(openai_speed, (int, float)) or not (0.25 <= openai_speed <= 4.0):
-                raise ValueError(f"openai.speed must be a number between 0.25 and 4.0, got: {openai_speed}")
+                raise ValueError(
+                    f"openai.speed must be a number between 0.25 and 4.0, got: {openai_speed}"
+                )
 
         # Validate elevenlabs.stability and similarity_boost
         el = self.config.get("elevenlabs", {})
@@ -191,14 +215,32 @@ class Config:
             val = el.get(el_key)
             if val is not None:
                 if not isinstance(val, (int, float)) or not (0.0 <= val <= 1.0):
-                    raise ValueError(f"elevenlabs.{el_key} must be a number between 0.0 and 1.0, got: {val}")
+                    raise ValueError(
+                        f"elevenlabs.{el_key} must be a number between 0.0 and 1.0, got: {val}"
+                    )
 
         # Validate timing values
         timing = self.config.get("timing", {})
-        for key in ["default_pre_delay", "default_post_delay", "min_slide_duration", "silent_slide_duration"]:
+        for key in [
+            "default_pre_delay",
+            "default_post_delay",
+            "max_inter_slide_pause",
+            "min_slide_duration",
+            "silent_slide_duration",
+        ]:
             value = timing.get(key)
             if value is not None and (not isinstance(value, (int, float)) or value < 0):
                 raise ValueError(f"timing.{key} must be non-negative, got: {value}")
+
+        # Validate the persistent content-addressed audio cache.
+        audio_cache = self.config.get("audio_cache", {})
+        if not isinstance(audio_cache, dict):
+            raise ValueError("audio_cache must be a mapping")
+        if not isinstance(audio_cache.get("enabled", True), bool):
+            raise ValueError("audio_cache.enabled must be true or false")
+        cache_dir = audio_cache.get("dir")
+        if not isinstance(cache_dir, str) or not cache_dir.strip():
+            raise ValueError("audio_cache.dir must be a non-empty path string")
 
     def _merge_config(self, user_config: Dict[str, Any]):
         """Recursively merge user config with defaults."""
@@ -264,7 +306,10 @@ class Config:
 
     def ensure_dirs(self):
         """Ensure all configured directories exist."""
-        for dir_key in ["voices_dir", "temp_dir"]:
+        dir_keys = ["voices_dir", "temp_dir"]
+        if self.get("audio_cache.enabled", True):
+            dir_keys.append("audio_cache.dir")
+        for dir_key in dir_keys:
             dir_path_str = self.get(dir_key)
             # Expand ~ to home directory
             dir_path = Path(dir_path_str).expanduser()

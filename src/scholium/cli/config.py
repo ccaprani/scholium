@@ -182,12 +182,16 @@ video:
 timing:
   default_pre_delay: 1.0    # seconds of silence before narration
   default_post_delay: 2.0   # seconds of silence after narration
+  max_inter_slide_pause: null  # cap combined POST+PRE at page changes; null disables
   min_slide_duration: 4.0   # minimum slide duration in seconds
   silent_slide_duration: 3.0  # duration for slides with no narration (TOC etc.)
 
 # ── File paths ────────────────────────────────────────────────────────────────
 voices_dir: "~/.local/share/scholium/voices"
 temp_dir: "./temp"
+audio_cache:
+  enabled: true
+  dir: "~/.cache/scholium/audio"
 output_dir: "./output"
 keep_temp_files: false   # set true to inspect intermediate files when debugging
 """

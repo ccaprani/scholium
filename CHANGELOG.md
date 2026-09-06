@@ -5,6 +5,40 @@ All notable changes to Scholium will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project follows [CalVer](https://calver.org/) versioning (`YYYY.N`).
 
+## Unreleased
+
+### Added
+
+- **Persistent content-addressed narration cache.** Matching audio is reused
+  across workspaces and slide-number changes using narration, provider, voice,
+  model, quality and speed as the cache identity. Cache hit/miss counts are
+  reported after synthesis; `--audio-cache-dir` selects an isolated cache and
+  `--no-audio-cache` disables reuse.
+- **Paired narration files.** `scholium generate ... --narration script.txt`
+  accepts one narration block per logical slide, separated by a line containing
+  `[NEXT]`. Empty blocks deliberately create silent slides, and block counts
+  are checked before generation.
+- **Strict rendered-page synchronisation.** Page-count and incremental-reveal
+  mismatches now stop the pipeline before TTS is invoked.
+
+### Changed
+
+- **Safe `--resume`.** Existing audio is reused only when a SHA-256 sidecar
+  confirms that narration, provider, voice, quality, and speed settings match.
+  Legacy audio without a digest is regenerated once.
+- **Vector Beamer PDF preservation.** The original Pandoc PDF is copied beside
+  the video instead of rebuilding a lower-quality PDF from rendered PNGs.
+
+### Fixed
+
+- **Relative Pandoc assets.** Pandoc now runs from the markdown file's directory,
+  so relative images and reusable LaTeX/TikZ `\input{...}` paths resolve
+  regardless of the directory from which Scholium is launched.
+- **Concurrent generation workspaces.** Ordinary `generate` runs now use unique
+  temporary directories, while kept/resumable runs use output-specific
+  directories. Parallel jobs can no longer overwrite one another's slide images
+  or audio segments.
+
 ## [2026.3] — 2026-05-26
 
 A large release focused on **subsystem symmetry**: the three things

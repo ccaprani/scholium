@@ -108,6 +108,9 @@ fps: 30  # Frames per second
 # Override: "./voices" (project-specific, portable with project)
 voices_dir: "~/.local/share/scholium/voices"
 temp_dir: "./temp"  # Temporary files during generation
+audio_cache:
+  enabled: true
+  dir: "~/.cache/scholium/audio"  # Shared across projects; keyed by text and voice settings
 output_dir: "./output"  # Final video output
 
 # Processing options
@@ -118,5 +121,6 @@ verbose: true  # Show detailed progress
 timing:
   default_pre_delay: 2.0   # Default pause before speaking (seconds)
   default_post_delay: 1.0  # Default pause after speaking (seconds)
+  max_inter_slide_pause: null  # Optional cap on combined POST+PRE between pages
   min_slide_duration: 4.0  # Minimum duration for any slide (seconds)
   silent_slide_duration: 3.0  # Duration for silent TOC/section slides

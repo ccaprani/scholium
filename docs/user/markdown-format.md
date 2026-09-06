@@ -1,6 +1,7 @@
 # Markdown Format
 
-Complete reference for Scholium's unified markdown format with embedded narration.
+Complete reference for Scholium markdown slides. Narration may be embedded or
+supplied as a paired `[NEXT]`-separated text file with `--narration`.
 
 ## Document Structure
 

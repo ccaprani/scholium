@@ -1,17 +1,13 @@
 """Pytest configuration and shared fixtures."""
 
 import pytest
-import subprocess
+import shutil
 from pathlib import Path
 
 
 def _check_tool(name: str) -> bool:
     """Return True if the named CLI tool is available on PATH."""
-    try:
-        subprocess.run([name, "--version"], capture_output=True, check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    return shutil.which(name) is not None
 
 
 def pytest_configure(config):

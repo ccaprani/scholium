@@ -88,6 +88,8 @@ is documented per-backend below.
 pandoc:
   # template: "beamer"     # Pandoc output format (default: beamer)
   # dpi: 300               # PNG rasterisation DPI (default: 300)
+  resource_paths:          # relative to the Markdown source, or absolute
+    - "/path/to/BridgeDesignAssessment/Book/Tikz"
   frontmatter:             # merged via `--metadata-file`, overrides source .md
     aspectratio: 169       # Beamer 16:9 deck
     theme: "metropolis"    # Beamer theme
@@ -298,11 +300,12 @@ doesn't expose as a named knob goes in `extra_args` — for example
 timing:
   default_pre_delay: 1.0    # silence before narration (seconds)
   default_post_delay: 2.0   # silence after narration (seconds)
+  max_inter_slide_pause: null  # cap combined POST+PRE between pages; null disables
   min_slide_duration: 4.0   # minimum slide duration (seconds)
   silent_slide_duration: 3.0  # duration for slides without narration (e.g. TOC)
 ```
 
-These are global defaults. Per-slide overrides use `[PRE Ns]` / `[POST Ns]` / `[DUR Ns]` directives in the notes block — see [Timing Control](timing-control.md).
+These are global defaults. Per-slide overrides use `[PRE Ns]` / `[POST Ns]` / `[DUR Ns]` directives in the notes block — see [Timing Control](timing-control.md). At a page change, `POST` and the following `PRE` are contiguous; `max_inter_slide_pause` scales that pair when their sum exceeds the configured cap. It leaves the first `PRE`, final `POST`, and narration-internal `[PAUSE]` directives unchanged.
 
 ---
 
@@ -312,10 +315,22 @@ These are global defaults. Per-slide overrides use `[PRE Ns]` / `[POST Ns]` / `[
 voices_dir: "~/.local/share/scholium/voices"
 temp_dir: "./temp"
 output_dir: "./output"
+audio_cache:
+  enabled: true
+  dir: "~/.cache/scholium/audio"
 keep_temp_files: false
 ```
 
 Set `keep_temp_files: true` to retain intermediate audio and image files for debugging.
+Ordinary runs receive unique workspaces beneath `temp_dir`, so separate outputs
+may be generated concurrently. Kept and resumable runs use a stable,
+output-specific workspace beneath that directory.
+
+The audio cache is separate from temporary workspaces. It stores narrated MP3
+segments by a digest of their text, provider, voice and synthesis settings, so
+unchanged narration can be reused even after slides are inserted or reordered.
+Credential values are excluded from the digest. Disable it for a one-off run with
+`--no-audio-cache`, or set a project-specific location with `--audio-cache-dir`.
 
 ---
 

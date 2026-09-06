@@ -5,14 +5,21 @@ Run with: pytest test_core.py
 Run unit tests only: pytest -m unit test_core.py
 """
 
-import re
 import tempfile
 import shutil
 from pathlib import Path
 import pytest
+from click import ClickException
 from click.testing import CliRunner
 
 from scholium.config import Config
+from scholium.cli.generate import (
+    _build_segments,
+    _cap_inter_slide_padding,
+    _enforce_slide_sync,
+    _generation_temp_dir,
+    _write_slides_pdf,
+)
 from scholium.main import cli, _parse_slide_range
 from scholium.tts_engine import _build_atempo_filter, QUALITY_PRESETS, _NATIVE_SPEED_PROVIDERS
 from scholium.voice_manager import VoiceManager
@@ -41,6 +48,8 @@ class TestConfig:
         assert cfg.get("pandoc_template") == "beamer"
         assert cfg.get("fps") == 30
         assert cfg.get("tts_provider") == "piper"
+        assert cfg.get("audio_cache.enabled") is True
+        assert cfg.get("audio_cache.dir") == "~/.cache/scholium/audio"
 
     def test_config_get_nested(self):
         """Dot-notation access returns nested values."""
@@ -88,10 +97,12 @@ class TestConfig:
         cfg = Config(config_path="nonexistent.yaml")
         cfg.set("voices_dir", str(tmp_path / "voices"))
         cfg.set("temp_dir", str(tmp_path / "temp"))
+        cfg.set("audio_cache.dir", str(tmp_path / "audio-cache"))
         cfg.ensure_dirs()
 
         assert Path(cfg.get("voices_dir")).exists()
         assert Path(cfg.get("temp_dir")).exists()
+        assert Path(cfg.get("audio_cache.dir")).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +281,69 @@ class TestGenerateCLIFlags:
         result = runner.invoke(cli, ["generate", str(minimal_md), "out.mp4", "--dry-run"])
         assert "no narration" in result.output
 
+    def test_dry_run_uses_external_narration(self, runner, minimal_md, tmp_path):
+        narration = tmp_path / "narration.txt"
+        narration.write_text("External first.\n[NEXT]\nExternal second.\n")
+
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                str(minimal_md),
+                "out.mp4",
+                "--narration",
+                str(narration),
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "External first" in result.output
+        assert "External second" in result.output
+        assert "Hello world" not in result.output
+
+    def test_dry_run_handles_title_slide_with_external_narration(self, runner, tmp_path):
+        markdown = tmp_path / "title.md"
+        markdown.write_text("---\ntitle: A Lecture\n---\n\n# First\n")
+        narration = tmp_path / "narration.txt"
+        narration.write_text("Welcome.\n[NEXT]\nFirst narration.\n")
+
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                str(markdown),
+                "out.mp4",
+                "--narration",
+                str(narration),
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Slide 1: Title slide" in result.output
+        assert "Slide 2: First" in result.output
+
+    def test_external_narration_count_mismatch_is_user_error(self, runner, minimal_md, tmp_path):
+        narration = tmp_path / "narration.txt"
+        narration.write_text("Only one block.\n")
+
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                str(minimal_md),
+                "out.mp4",
+                "--narration",
+                str(narration),
+                "--dry-run",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "1 blocks" in result.output
+        assert "2 logical slides" in result.output
+
     def test_dry_run_with_quality_accepted(self, runner, minimal_md):
         for val in ("fast", "balanced", "best"):
             result = runner.invoke(
@@ -282,9 +356,7 @@ class TestGenerateCLIFlags:
         assert result.exit_code != 0
 
     def test_quality_invalid_value_rejected(self, runner, minimal_md):
-        result = runner.invoke(
-            cli, ["generate", str(minimal_md), "out.mp4", "--quality", "ultra"]
-        )
+        result = runner.invoke(cli, ["generate", str(minimal_md), "out.mp4", "--quality", "ultra"])
         assert result.exit_code != 0
 
     def test_slide_range_invalid_format_rejected(self, runner, minimal_md):
@@ -292,6 +364,30 @@ class TestGenerateCLIFlags:
             cli, ["generate", str(minimal_md), "out.mp4", "--slide-range", "abc", "--dry-run"]
         )
         assert result.exit_code != 0
+
+    def test_audio_cache_flags_are_accepted(self, runner, minimal_md, tmp_path):
+        result = runner.invoke(
+            cli,
+            [
+                "generate",
+                str(minimal_md),
+                "out.mp4",
+                "--audio-cache",
+                "--audio-cache-dir",
+                str(tmp_path / "cache"),
+                "--dry-run",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert str(tmp_path / "cache") in result.output
+
+    def test_audio_cache_can_be_disabled(self, runner, minimal_md):
+        result = runner.invoke(
+            cli,
+            ["generate", str(minimal_md), "out.mp4", "--no-audio-cache", "--dry-run"],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Audio cache: disabled" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -376,8 +472,6 @@ class TestUnifiedParser:
     def test_invalid_slide_level_raises(self):
         """slide-level values other than 1 or 2 raise ValueError."""
         parser = UnifiedParser()
-        import io, textwrap
-
         md_file = Path(tempfile.mktemp(suffix=".md"))
         md_file.write_text("---\nslide-level: 3\n---\n# Slide\n")
         with pytest.raises(ValueError, match="slide-level"):
@@ -418,9 +512,9 @@ class TestUnifiedParser:
         )
         content, notes = parser._extract_notes_block(slide_text)
         assert notes == "Real narration."
-        assert "Real narration." not in content    # real notes block removed from content
-        assert "```markdown" in content            # fenced block preserved in content
-        assert "This is an example" in content     # example code preserved in content
+        assert "Real narration." not in content  # real notes block removed from content
+        assert "```markdown" in content  # fenced block preserved in content
+        assert "This is an example" in content  # example code preserved in content
 
     def test_parse_body_ignores_heading_inside_fenced_code(self):
         """A # heading inside a fenced code block must not create an extra slide."""
@@ -570,6 +664,84 @@ class TestUnifiedParser:
         assert slides[0].is_title_slide is True
         assert slides[0].has_narration is True
 
+    # --- external narration ---
+
+    def test_external_narration_replaces_embedded_notes(self, tmp_path):
+        markdown = tmp_path / "slides.md"
+        markdown.write_text(
+            "# First\n\n::: notes\nEmbedded first.\n:::\n\n"
+            "# Second\n\n::: notes\nEmbedded second.\n:::\n"
+        )
+        narration = tmp_path / "narration.txt"
+        narration.write_text(
+            "[PRE 1s]\nExternal first.\n\n"
+            ":: Reference: source A\n"
+            "[NEXT]\n"
+            "External second.\n"
+        )
+
+        slides = UnifiedParser().parse(str(markdown), str(narration))
+
+        assert slides[0].narration_segments == ["External first."]
+        assert slides[0].pre_delay == 1.0
+        assert slides[0].metadata["reference"] == "source A"
+        assert slides[1].narration_segments == ["External second."]
+
+    def test_external_narration_keeps_empty_silent_block(self, tmp_path):
+        markdown = tmp_path / "slides.md"
+        markdown.write_text("# First\n\n# Silent\n\n# Third\n")
+        narration = tmp_path / "narration.txt"
+        narration.write_text("First.\n[NEXT]\n\n[NEXT]\nThird.\n")
+
+        slides = UnifiedParser().parse(str(markdown), str(narration))
+
+        assert slides[0].narration_segments == ["First."]
+        assert slides[1].narration_segments == []
+        assert slides[2].narration_segments == ["Third."]
+
+    def test_external_narration_includes_frontmatter_title(self, tmp_path):
+        markdown = tmp_path / "slides.md"
+        markdown.write_text("---\ntitle: A Lecture\nslide-level: 1\n---\n# First\n")
+        narration = tmp_path / "narration.txt"
+        narration.write_text("Title narration.\n[NEXT]\nFirst narration.\n")
+
+        slides = UnifiedParser().parse(str(markdown), str(narration))
+
+        assert len(slides) == 2
+        assert slides[0].is_title_slide
+        assert slides[0].narration_segments == ["Title narration."]
+
+    def test_renderer_can_suppress_frontmatter_title_slide(self, tmp_path):
+        markdown = tmp_path / "slides.md"
+        markdown.write_text("---\ntitle: Metadata Only\n---\n# First\n")
+        narration = tmp_path / "narration.txt"
+        narration.write_text("First narration.\n")
+
+        slides = UnifiedParser().parse(str(markdown), str(narration), include_title_slide=False)
+
+        assert len(slides) == 1
+        assert not slides[0].is_title_slide
+        assert slides[0].narration_segments == ["First narration."]
+
+    def test_renderer_can_add_silent_frontmatter_title_slide(self, tmp_path):
+        markdown = tmp_path / "slides.md"
+        markdown.write_text("---\ntitle: A Lecture\n---\n# First\n")
+
+        slides = UnifiedParser().parse(str(markdown), include_title_slide=True)
+
+        assert len(slides) == 2
+        assert slides[0].is_title_slide
+        assert not slides[0].has_narration
+
+    def test_external_narration_count_must_match_slides(self, tmp_path):
+        markdown = tmp_path / "slides.md"
+        markdown.write_text("# First\n\n# Second\n")
+        narration = tmp_path / "narration.txt"
+        narration.write_text("Only one block.\n")
+
+        with pytest.raises(ValueError, match="1 blocks.*2 logical slides"):
+            UnifiedParser().parse(str(markdown), str(narration))
+
     # --- has_narration ---
 
     def test_has_narration_true(self):
@@ -647,6 +819,64 @@ class TestValidateSlides:
         )
         warnings = validate_slides([slide], num_pdf_pages=3)
         assert any("3" in w and "2" in w for w in warnings)
+
+
+@pytest.mark.unit
+class TestGenerationGuards:
+    """Guard expensive generation against sync errors and PDF degradation."""
+
+    def test_page_mismatch_is_fatal(self):
+        slides = [Slide(index=0, markdown_content="# One", narration_segments=["One."])]
+
+        with pytest.raises(ClickException, match="synchronisation failed"):
+            _enforce_slide_sync(slides, num_rendered_pages=2, is_verbose=False)
+
+    def test_incremental_narration_mismatch_is_fatal(self):
+        slides = [
+            Slide(
+                index=0,
+                markdown_content="# One\n>- A\n>- B\n",
+                narration_segments=["Only one segment."],
+            )
+        ]
+
+        with pytest.raises(ClickException, match="incremental bullets"):
+            _enforce_slide_sync(slides, num_rendered_pages=2, is_verbose=False)
+
+    def test_silent_slide_is_allowed(self):
+        slides = [Slide(index=0, markdown_content="# One", narration_segments=[])]
+        _enforce_slide_sync(slides, num_rendered_pages=1, is_verbose=False)
+
+    def test_vector_pdf_is_copied_without_rasterisation(self, tmp_path):
+        source = tmp_path / "source.pdf"
+        destination = tmp_path / "destination.pdf"
+        source.write_bytes(b"%PDF-vector-original")
+
+        _write_slides_pdf([], destination, False, source_pdf=source)
+
+        assert destination.read_bytes() == source.read_bytes()
+
+    def test_default_generation_workspaces_are_unique(self, tmp_path):
+        root = tmp_path / "temp"
+        output = tmp_path / "lecture.mp4"
+
+        first = _generation_temp_dir(root, output, persistent=False)
+        second = _generation_temp_dir(root, output, persistent=False)
+
+        assert first.parent == root
+        assert second.parent == root
+        assert first != second
+
+    def test_persistent_workspace_is_stable_per_output(self, tmp_path):
+        root = tmp_path / "temp"
+
+        first = _generation_temp_dir(root, tmp_path / "one.mp4", persistent=True)
+        same = _generation_temp_dir(root, tmp_path / "one.mp4", persistent=True)
+        other = _generation_temp_dir(root, tmp_path / "two.mp4", persistent=True)
+
+        assert first == same
+        assert first != other
+        assert first.parent == root
 
 
 # ---------------------------------------------------------------------------
@@ -824,3 +1054,45 @@ class TestParserSegmentStructure:
         assert segments[0]["fixed_duration"] == 3.0
         assert segments[1]["min_duration"] == 12.0
         assert segments[2]["pre_delay"] == 1.0
+
+
+@pytest.mark.unit
+class TestInterSlidePause:
+    """Combined page-boundary padding can be capped without changing speech."""
+
+    def test_cap_scales_adjacent_post_and_pre_proportionally(self):
+        segments = [
+            {"slide_number": 1, "pre_delay": 1.0, "post_delay": 1.0},
+            {"slide_number": 2, "pre_delay": 1.0, "post_delay": 1.0},
+        ]
+
+        _cap_inter_slide_padding(segments, 0.5)
+
+        assert segments[0]["pre_delay"] == 1.0
+        assert segments[0]["post_delay"] == pytest.approx(0.25)
+        assert segments[1]["pre_delay"] == pytest.approx(0.25)
+        assert segments[1]["post_delay"] == 1.0
+
+    def test_cap_does_not_touch_same_page_segments(self):
+        segments = [
+            {"slide_number": 1, "pre_delay": 0.0, "post_delay": 1.0},
+            {"slide_number": 1, "pre_delay": 1.0, "post_delay": 0.0},
+        ]
+
+        _cap_inter_slide_padding(segments, 0.5)
+
+        assert segments[0]["post_delay"] == 1.0
+        assert segments[1]["pre_delay"] == 1.0
+
+    def test_build_segments_applies_configured_cap(self):
+        cfg = Config(config_path="nonexistent.yaml")
+        cfg.set("timing.max_inter_slide_pause", 0.5)
+        slides = [
+            Slide(0, "## One", ["One."], pre_delay=1.0, post_delay=1.0),
+            Slide(1, "## Two", ["Two."], pre_delay=1.0, post_delay=1.0),
+        ]
+
+        segments = _build_segments(slides, cfg)
+
+        assert segments[0]["post_delay"] == pytest.approx(0.25)
+        assert segments[1]["pre_delay"] == pytest.approx(0.25)

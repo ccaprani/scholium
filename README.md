@@ -16,7 +16,7 @@
 
 > *Scholium* (Greek: σχόλιον) — An explanatory note or commentary. Your digital scholium for the modern classroom.
 
-Convert markdown slides with embedded narration into professional videos. Perfect for flipped classroom content, lecture recordings, and maintaining course libraries.
+Convert markdown slides with embedded or paired narration into professional videos. Perfect for flipped classroom content, lecture recordings, and maintaining course libraries.
 
 <p align="center">
   <img src="https://ccaprani.github.io/scholium/demo.gif"
@@ -74,9 +74,10 @@ scholium generate lecture.md lecture.mp4
 
 ## Key Features
 
-- 📝 **Unified Markdown Format**: Slides and narration in one file with `::: notes :::` blocks
+- 📝 **Flexible Narration**: Keep narration in `::: notes :::` blocks or in a paired, reusable text script
 - 🖼 **Pluggable Slide Backends**: Pandoc/Beamer (default) or Slidev — same source, two looks
 - 🎤 **Multiple TTS Providers**: Piper (local), ElevenLabs (cloud), Coqui, F5-TTS, StyleTTS2, Tortoise (local voice cloning), OpenAI, Bark
+- ♻️ **Narration-Aware Audio Cache**: Reuse unchanged segments safely across edits, reordered slides, and separate workspaces
 - ⏱️ **Flexible Timing**: Control pauses, slide duration, and pacing with simple directives
 - 🔧 **Production Ready**: Batch processing, validation, verbose output
 - 🎨 **Professional Output**: 1080p video with synchronized audio and slides
@@ -142,12 +143,16 @@ scholium generate slides.md output.mp4 [options]
 - `--voice NAME`: Voice ID to use (e.g., `en_US-lessac-medium` for Piper, an ElevenLabs voice ID, or a registered local voice name)
 - `--provider NAME`: TTS provider (`piper`, `elevenlabs`, `coqui`, `openai`, `bark`, `f5tts`, `styletts2`, `tortoise`)
 - `--slide-backend NAME`: Slide rendering backend (`pandoc`, `slidev`, or `marp`; default: `pandoc`)
+- `--resource-path DIR`: Add a Pandoc figure/asset directory (repeatable)
 - `--slide-range RANGE`: Process only a subset of slides, e.g. `5` or `3-7` (1-indexed pages)
+- `--narration FILE`: Use a `[NEXT]`-separated text script instead of embedded notes
 - `--speed RATE`: Speech-rate multiplier (0.1–5.0; 1.0 = normal)
 - `--quality PRESET`: Audio quality preset (`fast`, `balanced`, `best`)
 - `--section-duration SECONDS`: Duration for silent section/TOC slides (default: 3.0)
 - `--dry-run`: Parse and print the narration; skip all generation
-- `--resume`: Skip audio generation for slides whose temp files already exist
+- `--resume`: Reuse only output-specific temp audio whose narration and voice settings still match
+- `--audio-cache` / `--no-audio-cache`: Enable or disable the persistent narration cache (enabled by default)
+- `--audio-cache-dir DIR`: Override the persistent audio cache directory
 - `--audio-only`: Generate audio segments only (no video encoding)
 - `--verbose`: Show detailed progress
 - `--keep-temp`: Keep temporary files for debugging
@@ -164,6 +169,14 @@ scholium generate lecture.md lecture.mp4 \
     --section-duration 2.0 \
     --verbose
 
+# With a separate narration script
+scholium generate lecture.md lecture.mp4 \
+    --narration lecture.narration.txt
+
+# Rebuild after editing one narration block. Unchanged blocks are reused.
+scholium generate lecture.md lecture.mp4 \
+    --narration lecture.narration.txt
+
 # With ElevenLabs (cloud)
 export ELEVENLABS_API_KEY="your_key"
 scholium generate lecture.md lecture.mp4 \
@@ -177,7 +190,8 @@ scholium generate lecture.md lecture.mp4 \
 
 ### Structure
 
-Scholium uses standard Pandoc markdown with embedded `::: notes :::` blocks for narration:
+Scholium uses standard Pandoc markdown. Narration can be embedded in
+`::: notes :::` blocks or supplied separately with `--narration`:
 
 ```markdown
 ---
@@ -309,6 +323,12 @@ Notice the three main components...
 - `[POST 3s]` - Pause 3 seconds after speaking
 - `[PAUSE 2s]` - 2-second mid-narration pause
 - `[DUR 5s]` - Fixed duration (overrides everything)
+
+At a page change, the preceding slide's `[POST]` and the following slide's
+`[PRE]` are contiguous and therefore add together. Set
+`timing.max_inter_slide_pause` when a project needs a consistent upper bound on
+that combined padding. This does not alter opening/closing holds or `[PAUSE]`
+directives inside narration.
 
 **Metadata in notes** (prefixed with `::`):
 - Not converted to speech
@@ -468,6 +488,10 @@ slide_backend: pandoc
 pandoc:
   # template: "beamer"           # Pandoc output format (default)
   # dpi: 300                     # PNG rasterisation DPI
+  # Paths are relative to the Markdown source (absolute paths also work).
+  # Markdown can then use e.g. ![](SLSDesign/PrestressDeflections.pdf).
+  resource_paths:
+    - "/path/to/BridgeDesignAssessment/Book/Tikz"
   frontmatter:                   # merged via `--metadata-file`; overrides
     aspectratio: 169             # the same keys in your source .md
     theme: metropolis            # Beamer theme
@@ -478,6 +502,11 @@ pandoc:
 
 The legacy top-level `pandoc_template: beamer` setting is still
 honoured if you have it in an older config file.
+
+For a one-off build, repeat `--resource-path DIR` on
+`scholium generate`. Scholium passes these directories to both Pandoc and
+TeX, so standalone vector figures built by a book project can be reused by
+slides without copying their TikZ source into each lecture module.
 
 ### Slidev
 
@@ -711,6 +740,7 @@ voice: en_US-lessac-medium
 timing:
   default_pre_delay: 0.5      # Pause before speaking
   default_post_delay: 1.0     # Pause after speaking
+  max_inter_slide_pause: null # Optional cap on combined POST+PRE between pages
   min_slide_duration: 3.0     # Minimum for any slide
   silent_slide_duration: 2.0  # Duration for TOC/section slides
 
@@ -731,6 +761,9 @@ video:
 # Paths
 voices_dir: ~/.local/share/scholium/voices
 temp_dir: ./temp
+audio_cache:
+  enabled: true
+  dir: ~/.cache/scholium/audio
 keep_temp_files: false
 verbose: true
 

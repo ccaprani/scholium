@@ -6,12 +6,12 @@
 scholium generate <slides.md> <output.mp4> [OPTIONS]
 ```
 
-Generate an instructional video from markdown slides with embedded narration.
+Generate an instructional video from markdown slides with embedded or paired narration.
 
 ### Arguments
 
 `slides.md`
-: Path to markdown file with embedded `:::notes:::` blocks.
+: Path to the markdown slide file.
 
 `output.mp4`
 : Path for output video file.
@@ -20,6 +20,7 @@ Generate an instructional video from markdown slides with embedded narration.
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--narration FILE` | Use a `[NEXT]`-separated narration script instead of embedded notes | embedded notes |
 | `--provider` | TTS provider: `piper`, `elevenlabs`, `coqui`, `openai`, `bark`, `f5tts`, `styletts2`, `tortoise` | `piper` |
 | `--voice` | Voice name or ID (see note below) | from config |
 | `--model` | TTS model ID | from config |
@@ -27,9 +28,12 @@ Generate an instructional video from markdown slides with embedded narration.
 | `--speed RATE` | Speech rate multiplier (0.1–5.0; 1.0=normal, 0.9=10% slower) | from config |
 | `--quality PRESET` | Quality preset: `fast`, `balanced`, `best` | from config |
 | `--slide-backend` | Slide-rendering backend: `pandoc`, `slidev`, or `marp` | from config |
+| `--resource-path DIR` | Add a Pandoc figure/asset search directory; repeat for multiple roots | none |
 | `--slide-range RANGE` | Process only a subset of slides, e.g. `5` or `3-7` (1-indexed pages) | all |
 | `--dry-run` | Parse narration and print it; skip all generation | false |
-| `--resume` | Skip audio generation for slides whose temp files already exist | false |
+| `--resume` | Reuse temp audio only when narration and voice settings still match | false |
+| `--audio-cache` / `--no-audio-cache` | Enable or disable persistent content-addressed narration reuse | enabled |
+| `--audio-cache-dir DIR` | Override the persistent audio cache directory | `~/.cache/scholium/audio` |
 | `--section-duration` | Duration for silent slides (seconds) | `3.0` |
 | `--verbose` | Show detailed progress output | false |
 | `--keep-temp` | Keep temporary files for debugging | false |
@@ -66,6 +70,9 @@ Generate an instructional video from markdown slides with embedded narration.
 # Basic generation
 scholium generate lecture.md output.mp4
 
+# Keep narration in a paired text file
+scholium generate lecture.md output.mp4 --narration lecture.narration.txt
+
 # Custom voice
 scholium generate lecture.md output.mp4 --voice en_US-amy-medium
 
@@ -87,8 +94,14 @@ scholium generate lecture.md output.mp4 --slide-range 3-7
 # Render with a specific slide backend
 scholium generate lecture.md output.mp4 --slide-backend marp
 
-# Resume an interrupted run (skips existing audio files in ./temp/)
+# Resume an interrupted run (reuses verified matching audio in the output-specific workspace under ./temp/)
 scholium generate lecture.md output.mp4 --resume --keep-temp
+
+# Normal repeat runs already reuse matching narration from the shared cache
+scholium generate lecture.md output.mp4 --narration narration.txt
+
+# Use an isolated cache for a project or CI job
+scholium generate lecture.md output.mp4 --audio-cache-dir .scholium/audio-cache
 
 # Verbose with temp files kept
 scholium generate lecture.md output.mp4 --verbose --keep-temp
@@ -497,6 +510,7 @@ tortoise:
 timing:
   default_pre_delay: 1.0
   default_post_delay: 2.0
+  max_inter_slide_pause: null
   min_slide_duration: 4.0
   silent_slide_duration: 3.0
 
@@ -517,12 +531,29 @@ video:
 # Paths
 voices_dir: "~/.local/share/scholium/voices"
 temp_dir: "./temp"
+audio_cache:
+  enabled: true
+  dir: "~/.cache/scholium/audio"
 output_dir: "./output"
 
 # Options
 keep_temp_files: false
 verbose: true
 ```
+
+### Incremental narration and selective review
+
+The audio cache is keyed by the narration text, provider, voice, model, quality
+and speed settings. It is independent of slide number and temporary workspace.
+Inserting or reordering slides therefore reuses every unchanged narration block;
+only new or edited blocks are synthesised. Timing-only changes also reuse the
+spoken audio because delays and slide duration are applied during video assembly.
+
+Use `--slide-range N-M --audio-only --keep-temp` to synthesise or inspect a short
+review range. A later full `generate` run reuses those approved segments. Changing
+from Piper to ElevenLabs, changing voice/model settings, or changing the narration
+automatically produces a different cache key. `--resume` is still useful for an
+interrupted kept workspace, but is no longer required for normal repeat builds.
 
 ## Environment Variables
 
