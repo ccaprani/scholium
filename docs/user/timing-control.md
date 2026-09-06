@@ -109,6 +109,21 @@ Slide appears → [PRE] pause → narration → [POST] pause
 
 `[DUR]` overrides everything — the slide shows for exactly that duration regardless of audio length.
 
+At a page change, one slide's `[POST]` is immediately followed by the next
+slide's `[PRE]`; the two values therefore form one combined silent interval. A
+project can prevent accidental double pauses while retaining independently
+authored directives:
+
+```yaml
+timing:
+  max_inter_slide_pause: 0.5
+```
+
+When the pair exceeds the cap, Scholium scales both values proportionally. The
+opening `PRE`, closing `POST`, same-page narration segments, and explicit
+`[PAUSE]` directives remain unchanged. The default is `null`, which preserves
+legacy timing exactly.
+
 ## See Also
 
 - [Narration Format](narration-format.md) — Complete narration syntax

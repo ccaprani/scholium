@@ -510,6 +510,7 @@ tortoise:
 timing:
   default_pre_delay: 1.0
   default_post_delay: 2.0
+  max_inter_slide_pause: null
   min_slide_duration: 4.0
   silent_slide_duration: 3.0
 

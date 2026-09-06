@@ -182,6 +182,7 @@ video:
 timing:
   default_pre_delay: 1.0    # seconds of silence before narration
   default_post_delay: 2.0   # seconds of silence after narration
+  max_inter_slide_pause: null  # cap combined POST+PRE at page changes; null disables
   min_slide_duration: 4.0   # minimum slide duration in seconds
   silent_slide_duration: 3.0  # duration for slides with no narration (TOC etc.)
 

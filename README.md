@@ -324,6 +324,12 @@ Notice the three main components...
 - `[PAUSE 2s]` - 2-second mid-narration pause
 - `[DUR 5s]` - Fixed duration (overrides everything)
 
+At a page change, the preceding slide's `[POST]` and the following slide's
+`[PRE]` are contiguous and therefore add together. Set
+`timing.max_inter_slide_pause` when a project needs a consistent upper bound on
+that combined padding. This does not alter opening/closing holds or `[PAUSE]`
+directives inside narration.
+
 **Metadata in notes** (prefixed with `::`):
 - Not converted to speech
 - Useful for references, author notes, TODOs
@@ -734,6 +740,7 @@ voice: en_US-lessac-medium
 timing:
   default_pre_delay: 0.5      # Pause before speaking
   default_post_delay: 1.0     # Pause after speaking
+  max_inter_slide_pause: null # Optional cap on combined POST+PRE between pages
   min_slide_duration: 3.0     # Minimum for any slide
   silent_slide_duration: 2.0  # Duration for TOC/section slides
 

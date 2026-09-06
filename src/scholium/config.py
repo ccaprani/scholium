@@ -74,6 +74,9 @@ class Config:
         "timing": {
             "default_pre_delay": 1.0,
             "default_post_delay": 2.0,
+            # Optional cap on the combined post-delay of one rendered page and
+            # pre-delay of the next.  ``None`` preserves legacy behaviour.
+            "max_inter_slide_pause": None,
             "min_slide_duration": 4.0,
             "silent_slide_duration": 3.0,  # TOC/section slides
         },
@@ -221,6 +224,7 @@ class Config:
         for key in [
             "default_pre_delay",
             "default_post_delay",
+            "max_inter_slide_pause",
             "min_slide_duration",
             "silent_slide_duration",
         ]:

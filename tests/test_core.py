@@ -14,6 +14,8 @@ from click.testing import CliRunner
 
 from scholium.config import Config
 from scholium.cli.generate import (
+    _build_segments,
+    _cap_inter_slide_padding,
     _enforce_slide_sync,
     _generation_temp_dir,
     _write_slides_pdf,
@@ -1052,3 +1054,45 @@ class TestParserSegmentStructure:
         assert segments[0]["fixed_duration"] == 3.0
         assert segments[1]["min_duration"] == 12.0
         assert segments[2]["pre_delay"] == 1.0
+
+
+@pytest.mark.unit
+class TestInterSlidePause:
+    """Combined page-boundary padding can be capped without changing speech."""
+
+    def test_cap_scales_adjacent_post_and_pre_proportionally(self):
+        segments = [
+            {"slide_number": 1, "pre_delay": 1.0, "post_delay": 1.0},
+            {"slide_number": 2, "pre_delay": 1.0, "post_delay": 1.0},
+        ]
+
+        _cap_inter_slide_padding(segments, 0.5)
+
+        assert segments[0]["pre_delay"] == 1.0
+        assert segments[0]["post_delay"] == pytest.approx(0.25)
+        assert segments[1]["pre_delay"] == pytest.approx(0.25)
+        assert segments[1]["post_delay"] == 1.0
+
+    def test_cap_does_not_touch_same_page_segments(self):
+        segments = [
+            {"slide_number": 1, "pre_delay": 0.0, "post_delay": 1.0},
+            {"slide_number": 1, "pre_delay": 1.0, "post_delay": 0.0},
+        ]
+
+        _cap_inter_slide_padding(segments, 0.5)
+
+        assert segments[0]["post_delay"] == 1.0
+        assert segments[1]["pre_delay"] == 1.0
+
+    def test_build_segments_applies_configured_cap(self):
+        cfg = Config(config_path="nonexistent.yaml")
+        cfg.set("timing.max_inter_slide_pause", 0.5)
+        slides = [
+            Slide(0, "## One", ["One."], pre_delay=1.0, post_delay=1.0),
+            Slide(1, "## Two", ["Two."], pre_delay=1.0, post_delay=1.0),
+        ]
+
+        segments = _build_segments(slides, cfg)
+
+        assert segments[0]["post_delay"] == pytest.approx(0.25)
+        assert segments[1]["pre_delay"] == pytest.approx(0.25)

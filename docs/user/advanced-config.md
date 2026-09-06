@@ -300,11 +300,12 @@ doesn't expose as a named knob goes in `extra_args` — for example
 timing:
   default_pre_delay: 1.0    # silence before narration (seconds)
   default_post_delay: 2.0   # silence after narration (seconds)
+  max_inter_slide_pause: null  # cap combined POST+PRE between pages; null disables
   min_slide_duration: 4.0   # minimum slide duration (seconds)
   silent_slide_duration: 3.0  # duration for slides without narration (e.g. TOC)
 ```
 
-These are global defaults. Per-slide overrides use `[PRE Ns]` / `[POST Ns]` / `[DUR Ns]` directives in the notes block — see [Timing Control](timing-control.md).
+These are global defaults. Per-slide overrides use `[PRE Ns]` / `[POST Ns]` / `[DUR Ns]` directives in the notes block — see [Timing Control](timing-control.md). At a page change, `POST` and the following `PRE` are contiguous; `max_inter_slide_pause` scales that pair when their sum exceeds the configured cap. It leaves the first `PRE`, final `POST`, and narration-internal `[PAUSE]` directives unchanged.
 
 ---
 

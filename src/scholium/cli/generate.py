@@ -593,7 +593,35 @@ def _build_segments(parsed_slides: List[Slide], cfg: Config) -> List[Dict[str, A
         if not is_incremental:
             pdf_page_index += 1
 
+    max_pause = cfg.get("timing.max_inter_slide_pause")
+    if max_pause is not None:
+        _cap_inter_slide_padding(segments, float(max_pause))
+
     return segments
+
+
+def _cap_inter_slide_padding(segments: List[Dict[str, Any]], max_pause: float) -> None:
+    """Cap added silence where one rendered page changes to the next.
+
+    Slide-level ``[POST]`` and ``[PRE]`` directives are authored independently,
+    but their silence is contiguous after clips are stitched.  Scaling the two
+    values proportionally preserves the author's balance while preventing an
+    accidental double pause.  Opening/closing padding, same-page narration
+    segments, and explicit ``[PAUSE]`` segments are unaffected.
+    """
+    for current, following in zip(segments, segments[1:]):
+        if current["slide_number"] == following["slide_number"]:
+            continue
+
+        post_delay = float(current.get("post_delay", 0.0))
+        pre_delay = float(following.get("pre_delay", 0.0))
+        combined = post_delay + pre_delay
+        if combined <= max_pause or combined == 0:
+            continue
+
+        scale = max_pause / combined
+        current["post_delay"] = post_delay * scale
+        following["pre_delay"] = pre_delay * scale
 
 
 def _enforce_slide_sync(
